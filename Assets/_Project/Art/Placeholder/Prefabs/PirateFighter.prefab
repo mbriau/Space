@@ -279,18 +279,17 @@ MonoBehaviour:
   Power:
     Reactor: 5
     ShieldCapacity: 2
-    EnergyWeaponsCapacity: 2
-    PhysicalWeaponsCapacity: 0
     EnginesCapacity: 2
     Shield: 2
-    EnergyWeapons: 2
-    PhysicalWeapons: 0
     Engines: 1
   ShieldMax: 60
   ShieldRechargePerPower: 2
   ShieldRebootSeconds: 6
   Weapons:
   - Type: 1
+    PowerDraw: 2
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 350
     Damage: 4
     ShieldDamage: 10

@@ -19,16 +19,22 @@ namespace Space.Core.Equipment
         public List<WeaponStats> Weapons;
         public List<ItemDefinition> Drones;
 
-        /// <summary>Power the subsystems could use at full capacity, compared with the reactor.</summary>
-        public int PowerDemand => Power.ShieldCapacity + Power.EnergyWeaponsCapacity + Power.PhysicalWeaponsCapacity + Power.EnginesCapacity;
+        /// <summary>Units all the weapons draw when powered (without supercharge).</summary>
+        public int WeaponsDemand;
+
+        /// <summary>Power everything could use at once (shield and engines at capacity, every weapon on), compared with the reactor.</summary>
+        public int PowerDemand => Power.ShieldCapacity + WeaponsDemand + Power.EnginesCapacity;
     }
 
     public static class LoadoutMath
     {
         public const float MinHull = 50f;
 
-        /// <summary>Usual opening distribution: shield 3, energy weapons 3, engines 2 (as in the duel).</summary>
-        public const int OpeningShield = 3, OpeningEnergy = 3, OpeningEngines = 2;
+        /// <summary>
+        /// Usual opening distribution: shield 3, engines 2, then the weapons in slot order as long as
+        /// they fit (the Cargo: its laser on, its cannon off, as in the duel).
+        /// </summary>
+        public const int OpeningShield = 3, OpeningEngines = 2;
 
         public static LoadoutStats Compute(ShipLoadout loadout)
         {
@@ -70,17 +76,13 @@ namespace Space.Core.Equipment
                 stats.TurnRateDegrees = engine.TurnRateDegrees * stats.SpeedFactor;
             }
 
-            int energyCapacity = 0, physicalCapacity = 0;
             foreach (var id in loadout.Weapons)
             {
                 var item = ItemCatalog.Get(id);
                 if (item == null || !ItemCategories.IsWeapon(item.Category))
                     continue;
                 stats.Weapons.Add(item.Weapon);
-                if (item.Weapon.IsEnergy)
-                    energyCapacity += item.Weapon.PowerDraw;
-                else
-                    physicalCapacity += item.Weapon.PowerDraw;
+                stats.WeaponsDemand += item.Weapon.PowerDraw;
             }
 
             foreach (var id in loadout.Drones)
@@ -90,23 +92,29 @@ namespace Space.Core.Equipment
                     stats.Drones.Add(item);
             }
 
+            // Shield and engines only: the weapons are switched on when the ship is fitted (OpeningPower).
             var grid = new PowerGrid
             {
                 Reactor = (byte)math.clamp(reactor?.Power ?? 0, 0, 255),
                 ShieldCapacity = (byte)(stats.ShieldMax > 0f ? math.clamp(shield.PowerCapacity, 0, 255) : 0),
-                EnergyWeaponsCapacity = (byte)math.clamp(energyCapacity, 0, 255),
-                PhysicalWeaponsCapacity = (byte)math.clamp(physicalCapacity, 0, 255),
                 EnginesCapacity = (byte)math.clamp(engine?.PowerCapacity ?? 0, 0, 255),
             };
-            // With no energy weapon, the opening power goes to the physical ones instead.
-            var energy = grid.EnergyWeaponsCapacity > 0 ? OpeningEnergy : 0;
-            var physical = grid.EnergyWeaponsCapacity > 0 ? 0 : OpeningEnergy;
-            PowerMath.Allocate(ref grid, OpeningShield, energy, physical, OpeningEngines);
+            PowerMath.Allocate(ref grid, OpeningShield, OpeningEngines);
             stats.Power = grid;
             return stats;
         }
 
-        /// <summary>The simulation weapon for a shop weapon (enabled, normal fire mode, loaded).</summary>
+        /// <summary>
+        /// Opening distribution of a freshly fitted ship: shield and engines as in <paramref name="grid"/>,
+        /// then each weapon in slot order if its cost still fits.
+        /// </summary>
+        public static void OpeningPower(ref PowerGrid grid, Unity.Collections.NativeArray<Weapon> weapons)
+        {
+            WeaponPower.PowerDownAll(ref grid, weapons);
+            WeaponPower.PowerUpInOrder(ref grid, weapons);
+        }
+
+        /// <summary>The simulation weapon for a shop weapon (unpowered, automatic, normal fire mode, loaded).</summary>
         public static Weapon ToWeapon(WeaponStats stats) => new()
         {
             Type = stats.Type,
@@ -119,7 +127,10 @@ namespace Space.Core.Equipment
             ProjectileSpeed = math.max(1f, stats.ProjectileSpeed),
             Spread = math.radians(stats.SpreadDegrees),
             Mode = FireMode.Normal,
-            Enabled = true,
+            Control = WeaponControl.Auto,
+            PowerDraw = (byte)math.clamp(stats.PowerDraw, 0, 255),
+            SuperchargeDraw = (byte)math.clamp(stats.SuperchargeDraw, 0, 255),
+            SuperchargeDamageFactor = stats.SuperchargeDamageFactor,
         };
 
         /// <summary>Damage per second of a weapon at full power, against an unshielded hull.</summary>

@@ -11,5 +11,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Sandbox.unity
     guid: 554bc1dc4c26389449341a675b34ada3
+  - enabled: 1
+    path: Assets/_Project/Scenes/Hangar.unity
+    guid: 2460269715c71f747a9816a3dcbcd26a
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

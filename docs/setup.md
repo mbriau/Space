@@ -63,11 +63,22 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
 - Combat entièrement par ordres : chaque arme choisit sa cible (l'ennemi le plus proche à portée qu'elle
   peut abîmer, ou la cible imposée par clic droit) et tire selon la probabilité de toucher et son mode :
   normal, nerveux (tire plus vite et plus souvent, rate davantage) ou prudent (ne tire que les coups
-  presque sûrs). Touche F pour changer de mode. Les tirs sont résolus avec un tirage déterministe par tick.
-- Puissance : le réacteur produit un nombre fixe d'unités à répartir entre le bouclier, les armes à
-  énergie, les armes physiques et les moteurs (panneau en bas à droite, boutons − / +, ou Q W E R,
-  Maj pour retirer). Chaque sous-système fonctionne en proportion de sa puissance : recharge du
-  bouclier, cadence des armes, vitesse. Sans puissance, une arme ne tire pas et le bouclier tombe.
+  presque sûrs). Pour l'instant toutes les armes sont en mode normal. Les tirs sont résolus avec un
+  tirage déterministe par tick.
+- Panneau d'armement (en bas à gauche) : une carte par arme du vaisseau du joueur. Interrupteur de
+  tension avec son coût en unités (« réacteur plein » quand il manque des unités), bouton de
+  surcharge pour les armes qui en ont, contrôle **Arrêt** (ne tire pas,
+  continue de se recharger), **Auto** (tire seule selon son mode) ou **Manuel** (bouton « FEU » : un tir
+  par clic, quelles que soient les chances, si l'arme est chargée et a une cible à portée), et barre
+  bleue de recharge. Barres de bouclier (bleu) et de coque au-dessus de chaque vaisseau.
+- Puissance : le réacteur produit un nombre fixe d'unités. Le bouclier et les moteurs les reçoivent
+  unité par unité et fonctionnent en proportion (panneau en bas à droite, boutons − / +, ou Q et R,
+  Maj pour retirer). Chaque arme consomme tout son coût quand elle est sous tension, ou rien : sous
+  tension elle se recharge à pleine vitesse, hors tension elle garde sa charge sans tirer. La mise sous
+  tension est refusée si le réacteur n'a pas assez d'unités libres (`WeaponPower`). Certaines armes
+  ont un mode « surchargé » : des unités en plus pour des tirs plus puissants (laser d'origine :
+  +2 unités, dégâts ×1,6 ; laser lourd : +2, ×1,5). Au départ : bouclier 3, moteurs 2, puis les armes
+  dans l'ordre tant qu'elles tiennent (le Cargo : laser allumé, canon éteint).
 - Dégâts : chaque tir retire d'abord du bouclier (dégâts bouclier), puis touche la coque (dégâts coque)
   atténués selon la charge restante du bouclier (90 % à pleine charge). Un bouclier ramené à zéro est
   « brisé » quelques secondes avant de pouvoir se recharger. Laser (énergie) : bouclier + coque ;

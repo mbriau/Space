@@ -165,6 +165,14 @@ namespace Space.Core.Equipment
             Cooldown = cooldown, ProjectileSpeed = speed, SpreadDegrees = spread, PowerDraw = draw, OrderedTargetOnly = orderedOnly,
         };
 
+        /// <summary>Gives a weapon its supercharged mode: <paramref name="extraDraw"/> more units for heavier shots.</summary>
+        static WeaponStats Supercharge(WeaponStats stats, int extraDraw, float damageFactor)
+        {
+            stats.SuperchargeDraw = extraDraw;
+            stats.SuperchargeDamageFactor = damageFactor;
+            return stats;
+        }
+
         static void Weapon(string id, ItemCategory category, int tier, int price, string name, WeaponStats stats, string description)
         {
             var item = Add(id, category, tier, price, name, description);
@@ -174,16 +182,16 @@ namespace Space.Core.Equipment
         static void AddEnergyWeapons()
         {
             const ItemCategory c = ItemCategory.EnergyWeapon;
-            Weapon(StarterLaser, c, 1, 0, "Laser de minage modifié", Laser(500f, 55f, 12f, 6f, 1500f, 0.4f, 3),
-                "Use le bouclier et entame un peu la coque. L'arme d'origine du Cargo.");
+            Weapon(StarterLaser, c, 1, 0, "Laser de minage modifié", Supercharge(Laser(500f, 55f, 12f, 6f, 1500f, 0.4f, 3), 2, 1.6f),
+                "Use le bouclier et entame un peu la coque. L'arme d'origine du Cargo. Surcharge : +2 unités, dégâts ×1,6.");
             Weapon("energy_ionizer", c, 1, 180, "Ioniseur I-1", Ion(520f, 95f, 6f, 2000f, 0.5f, 3),
                 "Ne touche que les boucliers, mais les vide presque deux fois plus vite.");
             Weapon("energy_pulse", c, 1, 200, "Laser à impulsions P-2", Laser(380f, 30f, 8f, 2.5f, 1500f, 0.7f, 3),
                 "Des tirs faibles et rapprochés, à courte portée : régulier, peu spectaculaire.");
             Weapon("energy_thermal", c, 1, 220, "Faisceau thermique T-6", Laser(300f, 40f, 40f, 6f, 1500f, 0.6f, 3),
                 "Brûle la coque autant que le bouclier, mais seulement de très près.");
-            Weapon("energy_heavy", c, 2, 340, "Laser lourd L-4", Laser(450f, 90f, 25f, 10f, 1400f, 0.4f, 4),
-                "Un tir dévastateur toutes les 10 s. Demande 4 unités de puissance.");
+            Weapon("energy_heavy", c, 2, 340, "Laser lourd L-4", Supercharge(Laser(450f, 90f, 25f, 10f, 1400f, 0.4f, 4), 2, 1.5f),
+                "Un tir dévastateur toutes les 10 s. Demande 4 unités de puissance. Surcharge : +2 unités, dégâts ×1,5.");
             Weapon("energy_lance", c, 2, 360, "Lance longue portée", Laser(750f, 45f, 10f, 8f, 2200f, 0.2f, 3),
                 "Frappe de très loin avec précision, mais chaque tir fait peu de dégâts.");
             Weapon("energy_ion_heavy", c, 2, 380, "Projecteur à ions lourd", Ion(450f, 160f, 9f, 1800f, 0.5f, 4),

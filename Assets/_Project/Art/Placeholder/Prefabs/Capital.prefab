@@ -369,18 +369,17 @@ MonoBehaviour:
   Power:
     Reactor: 20
     ShieldCapacity: 8
-    EnergyWeaponsCapacity: 6
-    PhysicalWeaponsCapacity: 4
     EnginesCapacity: 4
     Shield: 6
-    EnergyWeapons: 6
-    PhysicalWeapons: 4
     Engines: 4
   ShieldMax: 2000
   ShieldRechargePerPower: 10
   ShieldRebootSeconds: 6
   Weapons:
   - Type: 0
+    PowerDraw: 2
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 0
     ShieldDamage: 80
@@ -391,6 +390,9 @@ MonoBehaviour:
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 1
+    PowerDraw: 2
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 20
     ShieldDamage: 50
@@ -401,6 +403,9 @@ MonoBehaviour:
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
+    PowerDraw: 1
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 80
     ShieldDamage: 0
@@ -411,6 +416,9 @@ MonoBehaviour:
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 0
+    PowerDraw: 2
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 0
     ShieldDamage: 80
@@ -421,6 +429,9 @@ MonoBehaviour:
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 1
+    PowerDraw: 2
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 20
     ShieldDamage: 50
@@ -431,6 +442,9 @@ MonoBehaviour:
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
+    PowerDraw: 1
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 80
     ShieldDamage: 0
@@ -441,6 +455,9 @@ MonoBehaviour:
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 3
+    PowerDraw: 1
+    SuperchargeDraw: 0
+    SuperchargeDamageFactor: 1
     Range: 700
     Damage: 300
     ShieldDamage: 250

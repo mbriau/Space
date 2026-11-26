@@ -13,7 +13,13 @@ namespace Space.Presentation.Game
         {
             em.SetComponentData(ship, new Hull { Current = stats.Hull, Max = stats.Hull });
 
+            var weapons = em.GetBuffer<Weapon>(ship);
+            weapons.Clear();
+            foreach (var w in stats.Weapons)
+                weapons.Add(LoadoutMath.ToWeapon(w));
+
             var grid = stats.Power;
+            LoadoutMath.OpeningPower(ref grid, weapons.AsNativeArray());
             em.SetComponentData(ship, grid);
 
             if (em.HasComponent<Shield>(ship))
@@ -33,11 +39,6 @@ namespace Space.Presentation.Game
             movement.Acceleration = stats.Acceleration;
             movement.TurnRateRadians = math.radians(stats.TurnRateDegrees);
             em.SetComponentData(ship, movement);
-
-            var weapons = em.GetBuffer<Weapon>(ship);
-            weapons.Clear();
-            foreach (var w in stats.Weapons)
-                weapons.Add(LoadoutMath.ToWeapon(w));
         }
 
         public static void ApplyToDrone(EntityManager em, Entity drone, ItemDefinition item)
@@ -54,21 +55,19 @@ namespace Space.Presentation.Game
             movement.MaxSpeed = item.DroneSpeed;
             em.SetComponentData(drone, movement);
 
-            // Drones have a small reactor: everything on the weapon and the engines.
-            var energy = item.Weapon.IsEnergy;
-            var grid = new PowerGrid
-            {
-                Reactor = 3,
-                EnergyWeaponsCapacity = (byte)(energy ? 1 : 0),
-                PhysicalWeaponsCapacity = (byte)(energy ? 0 : 1),
-                EnginesCapacity = 2,
-            };
-            PowerMath.Allocate(ref grid, 0, energy ? 1 : 0, energy ? 0 : 1, 2);
-            em.SetComponentData(drone, grid);
-
+            // Drones have a small reactor, just enough for the engines and their weapon.
             var weapons = em.GetBuffer<Weapon>(drone);
             weapons.Clear();
             weapons.Add(LoadoutMath.ToWeapon(item.Weapon));
+
+            var grid = new PowerGrid
+            {
+                Reactor = (byte)math.clamp(2 + item.Weapon.PowerDraw, 0, 255),
+                EnginesCapacity = 2,
+            };
+            PowerMath.Allocate(ref grid, 0, 2);
+            LoadoutMath.OpeningPower(ref grid, weapons.AsNativeArray());
+            em.SetComponentData(drone, grid);
         }
     }
 }

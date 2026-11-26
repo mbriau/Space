@@ -27,8 +27,16 @@ namespace Space.Core.Equipment
         public float SpreadDegrees;
         public bool OrderedTargetOnly;
 
-        /// <summary>Power units the weapon needs to fire at its full rate.</summary>
+        /// <summary>Power units the weapon draws from the reactor while it is powered.</summary>
         public int PowerDraw;
+
+        /// <summary>Extra units drawn when supercharged; 0 = no supercharge mode.</summary>
+        public int SuperchargeDraw;
+
+        /// <summary>Damage multiplier of a supercharged shot.</summary>
+        public float SuperchargeDamageFactor;
+
+        public bool CanSupercharge => SuperchargeDraw > 0;
 
         public bool IsEnergy => Type == DamageType.Ion || Type == DamageType.Laser;
     }

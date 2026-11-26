@@ -58,6 +58,50 @@ namespace Space.Core.Tests
         }
 
         [Test]
+        public void AWeaponChargesAtFullSpeedOrNotAtAll()
+        {
+            Assert.AreEqual(1f, WeaponMath.ChargeRate(powered: true));
+            Assert.AreEqual(0f, WeaponMath.ChargeRate(powered: false));
+        }
+
+        [Test]
+        public void OnlyPoweredArmedWeaponsLookForTargets()
+        {
+            Assert.IsTrue(WeaponMath.CanEngage(WeaponControl.Auto, ammo: -1, powered: true));
+            Assert.IsTrue(WeaponMath.CanEngage(WeaponControl.Manual, ammo: 3, powered: true));
+            Assert.IsFalse(WeaponMath.CanEngage(WeaponControl.Off, ammo: -1, powered: true));
+            Assert.IsFalse(WeaponMath.CanEngage(WeaponControl.Auto, ammo: 0, powered: true));
+            Assert.IsFalse(WeaponMath.CanEngage(WeaponControl.Auto, ammo: -1, powered: false));
+        }
+
+        [Test]
+        public void ManualWeaponsFireOnOrderWhateverTheOdds()
+        {
+            const float doubtful = 0.05f;
+            Assert.IsTrue(WeaponMath.WantsToFire(WeaponControl.Manual, fireRequested: true, FireMode.Normal, doubtful));
+            Assert.IsFalse(WeaponMath.WantsToFire(WeaponControl.Manual, fireRequested: false, FireMode.Normal, 1f));
+        }
+
+        [Test]
+        public void AutomaticWeaponsFollowTheirFireModeAndHeldWeaponsNeverFire()
+        {
+            Assert.IsTrue(WeaponMath.WantsToFire(WeaponControl.Auto, fireRequested: false, FireMode.Normal, 0.9f));
+            Assert.IsFalse(WeaponMath.WantsToFire(WeaponControl.Auto, fireRequested: true, FireMode.Normal, 0.2f));
+            Assert.IsFalse(WeaponMath.WantsToFire(WeaponControl.Off, fireRequested: true, FireMode.Normal, 1f));
+        }
+
+        [Test]
+        public void ChargeFractionGoesFromJustFiredToReady()
+        {
+            Assert.AreEqual(0f, WeaponMath.ChargeFraction(cooldownLeft: 4f, cooldown: 4f, FireMode.Normal), 1e-6f);
+            Assert.AreEqual(0.75f, WeaponMath.ChargeFraction(cooldownLeft: 1f, cooldown: 4f, FireMode.Normal), 1e-6f);
+            Assert.AreEqual(1f, WeaponMath.ChargeFraction(cooldownLeft: 0f, cooldown: 4f, FireMode.Normal), 1e-6f);
+            // Just after a trigger-happy shot, the shorter reload starts empty too.
+            var full = WeaponMath.ReloadSeconds(4f, FireMode.TriggerHappy);
+            Assert.AreEqual(0f, WeaponMath.ChargeFraction(full, 4f, FireMode.TriggerHappy), 1e-6f);
+        }
+
+        [Test]
         public void ShotsAreReproducible()
         {
             var a = WeaponMath.ShotRandom(42, 100, 7, 0).NextFloat();

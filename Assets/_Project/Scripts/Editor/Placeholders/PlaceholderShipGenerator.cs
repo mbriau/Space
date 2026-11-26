@@ -172,8 +172,7 @@ namespace Space.Editor.Placeholders
         /// <summary>First-pass combat numbers, to be balanced in playtests.</summary>
         static void ConfigureCombat(ShipAuthoring ship, string className)
         {
-            // Energy weapons (ion, laser) and physical weapons (cannon, missile) draw on separate
-            // subsystems of the power grid. Every hit damages the shield first, then the hull,
+            // Each weapon draws its own power from the reactor, all or nothing. Every hit damages the shield first, then the hull,
             // mitigated by what is left of the shield.
             ShipAuthoring.WeaponSpec Laser(float range, float shieldDamage, float hullDamage, float cooldown) => new()
             {
@@ -195,16 +194,23 @@ namespace Space.Editor.Placeholders
                 Type = DamageType.Missile, Range = 700f, Damage = damage, ShieldDamage = shieldDamage, Ammo = count,
                 OrderedTargetOnly = true, CooldownSeconds = 4f, SpreadDegrees = 0.2f, ProjectileSpeed = 2500f,
             };
-            void Power(byte reactor, byte shieldCap, byte energyCap, byte physicalCap, byte enginesCap,
-                       byte shield, byte energy, byte physical, byte engines)
+            // Shield and engines take their opening units first; the weapons are then switched on in
+            // order as long as their power draw fits in what the reactor has left.
+            void Power(byte reactor, byte shieldCap, byte enginesCap, byte shield, byte engines)
             {
                 ship.Power = new ShipAuthoring.PowerSpec
                 {
                     Reactor = reactor,
-                    ShieldCapacity = shieldCap, EnergyWeaponsCapacity = energyCap,
-                    PhysicalWeaponsCapacity = physicalCap, EnginesCapacity = enginesCap,
-                    Shield = shield, EnergyWeapons = energy, PhysicalWeapons = physical, Engines = engines,
+                    ShieldCapacity = shieldCap, EnginesCapacity = enginesCap,
+                    Shield = shield, Engines = engines,
                 };
+            }
+            ShipAuthoring.WeaponSpec Draw(ShipAuthoring.WeaponSpec spec, byte draw, byte superchargeDraw = 0, float superchargeFactor = 1f)
+            {
+                spec.PowerDraw = draw;
+                spec.SuperchargeDraw = superchargeDraw;
+                spec.SuperchargeDamageFactor = superchargeFactor;
+                return spec;
             }
             void ShieldStats(float max, float rechargePerPower, float reboot = 6f)
             {
@@ -221,62 +227,62 @@ namespace Space.Editor.Placeholders
                 case "Drone":
                     // No shield: cheap, fragile, a cannon.
                     ship.Hull = 80f;
-                    Power(3, 0, 0, 1, 2, 0, 0, 1, 2);
-                    ship.Weapons.Add(Cannon(320f, 6f, 1.2f));
+                    Power(3, 0, 2, 0, 2);
+                    ship.Weapons.Add(Draw(Cannon(320f, 6f, 1.2f), 1));
                     break;
                 case "Cargo":
                     // The player's first ship: shield, an energy weapon that also damages the hull, and
-                    // a cannon with limited ammunition. Reactor 8: shield 3, energy weapon 3, engines 2.
+                    // a cannon with limited ammunition. Reactor 8: shield 3, engines 2, laser 3 (cannon off at first).
                     ship.Hull = 450f;
                     ShieldStats(150f, 1.5f, reboot: 10f);
-                    Power(8, 4, 3, 2, 3, 3, 3, 0, 2);
-                    ship.Weapons.Add(Laser(500f, 55f, 12f, 6f));
-                    ship.Weapons.Add(Cannon(450f, 85f, 5f, ammo: 8));
+                    Power(8, 4, 3, 3, 2);
+                    ship.Weapons.Add(Draw(Laser(500f, 55f, 12f, 6f), 3, superchargeDraw: 2, superchargeFactor: 1.6f));
+                    ship.Weapons.Add(Draw(Cannon(450f, 85f, 5f, ammo: 8), 2));
                     break;
                 case "Raider":
                     // Pirate raider, a little smaller than the Cargo and about as fast: the same toolkit.
                     ship.Team = ShipAuthoring.TeamId.Pirates;
                     ship.Hull = 320f;
                     ShieldStats(120f, 1.5f, reboot: 10f);
-                    Power(7, 4, 3, 1, 3, 3, 3, 0, 1);
-                    ship.Weapons.Add(Laser(480f, 48f, 10f, 6.5f));
-                    ship.Weapons.Add(Cannon(430f, 70f, 5.5f, ammo: 7));
+                    Power(7, 4, 3, 3, 1);
+                    ship.Weapons.Add(Draw(Laser(480f, 48f, 10f, 6.5f), 3));
+                    ship.Weapons.Add(Draw(Cannon(430f, 70f, 5.5f, ammo: 7), 1));
                     break;
                 case "PirateFighter":
                     ship.Team = ShipAuthoring.TeamId.Pirates;
                     ship.Hull = 120f;
                     ShieldStats(60f, 2f);
-                    Power(5, 2, 2, 0, 2, 2, 2, 0, 1);
-                    ship.Weapons.Add(Laser(350f, 10f, 4f, 1.5f));
+                    Power(5, 2, 2, 2, 1);
+                    ship.Weapons.Add(Draw(Laser(350f, 10f, 4f, 1.5f), 2));
                     break;
                 case "Corvette":
                     ship.Hull = 300f;
                     ShieldStats(200f, 2f);
-                    Power(9, 4, 3, 2, 3, 3, 3, 1, 2);
-                    ship.Weapons.Add(Ion(400f, 30f, 2f));
-                    ship.Weapons.Add(Laser(400f, 20f, 8f, 2f));
-                    ship.Weapons.Add(Cannon(400f, 30f, 2.5f, ammo: 20));
+                    Power(9, 4, 3, 3, 2);
+                    ship.Weapons.Add(Draw(Ion(400f, 30f, 2f), 2));
+                    ship.Weapons.Add(Draw(Laser(400f, 20f, 8f, 2f), 2));
+                    ship.Weapons.Add(Draw(Cannon(400f, 30f, 2.5f, ammo: 20), 1));
                     break;
                 case "Frigate":
                     ship.Hull = 800f;
                     ShieldStats(500f, 4f);
-                    Power(12, 5, 4, 3, 3, 4, 4, 2, 2);
-                    ship.Weapons.Add(Ion(500f, 45f, 2f));
-                    ship.Weapons.Add(Laser(500f, 30f, 12f, 2f));
-                    ship.Weapons.Add(Cannon(500f, 50f, 3f, ammo: 30));
-                    ship.Weapons.Add(Missiles(4, 200f, 150f));
+                    Power(12, 5, 3, 4, 2);
+                    ship.Weapons.Add(Draw(Ion(500f, 45f, 2f), 2));
+                    ship.Weapons.Add(Draw(Laser(500f, 30f, 12f, 2f), 2));
+                    ship.Weapons.Add(Draw(Cannon(500f, 50f, 3f, ammo: 30), 1));
+                    ship.Weapons.Add(Draw(Missiles(4, 200f, 150f), 1));
                     break;
                 case "Capital":
                     ship.Hull = 3000f;
                     ShieldStats(2000f, 10f);
-                    Power(20, 8, 6, 4, 4, 6, 6, 4, 4);
+                    Power(20, 8, 4, 6, 4);
                     for (var i = 0; i < 2; i++)
                     {
-                        ship.Weapons.Add(Ion(700f, 80f, 2.5f));
-                        ship.Weapons.Add(Laser(700f, 50f, 20f, 2.5f));
-                        ship.Weapons.Add(Cannon(700f, 80f, 3f, ammo: 40));
+                        ship.Weapons.Add(Draw(Ion(700f, 80f, 2.5f), 2));
+                        ship.Weapons.Add(Draw(Laser(700f, 50f, 20f, 2.5f), 2));
+                        ship.Weapons.Add(Draw(Cannon(700f, 80f, 3f, ammo: 40), 1));
                     }
-                    ship.Weapons.Add(Missiles(6, 300f, 250f));
+                    ship.Weapons.Add(Draw(Missiles(6, 300f, 250f), 1));
                     break;
             }
         }

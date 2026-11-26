@@ -59,7 +59,7 @@ namespace Space.Core.Combat
             [ReadOnly] public ComponentLookup<Shield> Shields;
             [ReadOnly] public ComponentLookup<FormationSlot> Slots;
 
-            void Execute(Entity entity, in SimPosition position, in Team team, in DynamicBuffer<Weapon> weapons,
+            void Execute(Entity entity, in SimPosition position, in Team team, DynamicBuffer<Weapon> weapons,
                          ref PowerGrid power, DynamicBuffer<ShipCommand> commands)
             {
                 if ((Tick + (uint)entity.Index) % DecisionInterval != 0)
@@ -104,19 +104,23 @@ namespace Space.Core.Combat
             /// target's shield holds; once it is broken, physical weapons on and everything else on
             /// the shield.
             /// </summary>
-            void ManagePower(ref PowerGrid power, in DynamicBuffer<Weapon> weapons, Entity target)
+            void ManagePower(ref PowerGrid power, DynamicBuffer<Weapon> weapons, Entity target)
             {
                 var targetShieldUp = Shields.HasComponent(target) && Shields[target].IsUp;
                 var physicalAmmo = false;
                 foreach (var weapon in weapons)
-                    physicalAmmo |= weapon.PowerSource == PowerSystem.PhysicalWeapons && weapon.Ammo != 0;
+                    physicalAmmo |= !weapon.IsEnergy && weapon.Ammo != 0;
 
-                if (!targetShieldUp && physicalAmmo)
-                    PowerMath.Allocate(ref power, shield: power.ShieldCapacity, energyWeapons: 0,
-                                       physicalWeapons: power.PhysicalWeaponsCapacity, engines: 0);
+                // Shield first, then the chosen weapons, then whatever is left to the engines.
+                var all = weapons.AsNativeArray();
+                WeaponPower.PowerDownAll(ref power, all);
+                var physicalPhase = !targetShieldUp && physicalAmmo;
+                if (physicalPhase)
+                    PowerMath.Allocate(ref power, shield: power.ShieldCapacity, engines: 0);
                 else
-                    PowerMath.Allocate(ref power, shield: power.ShieldCapacity - 1, energyWeapons: power.EnergyWeaponsCapacity,
-                                       physicalWeapons: 0, engines: 1);
+                    PowerMath.Allocate(ref power, shield: power.ShieldCapacity - 1, engines: 1);
+                WeaponPower.PowerUpInOrder(ref power, all, energy: !physicalPhase, physical: physicalPhase);
+                PowerMath.FreeToEngines(ref power);
             }
         }
     }

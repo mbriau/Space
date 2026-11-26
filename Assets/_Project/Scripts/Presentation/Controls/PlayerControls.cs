@@ -17,8 +17,9 @@ namespace Space.Presentation.Controls
     /// Mouse and keyboard controls for the local player (M1):
     /// left click or Tab selects a ship; right click orders the selected ship to move to the clicked
     /// point on the game plane (Shift appends to its queue), or to attack the enemy ship under the
-    /// pointer; F cycles the fire mode of its weapons. Orders go through the same components as the
-    /// AI's (<see cref="ShipCommand"/> queue, <see cref="AttackTarget"/>).
+    /// pointer. The weapon panel powers each weapon, sets its control (held, automatic, manual) and
+    /// fires manual weapons. Orders go through the same components as the AI's
+    /// (<see cref="ShipCommand"/> queue, <see cref="AttackTarget"/>, <see cref="Weapon"/> settings).
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class PlayerControls : MonoBehaviour
@@ -48,8 +49,6 @@ namespace Space.Presentation.Controls
             public bool HasPower;
             public PowerGrid Power;
             public int WeaponCount;
-            public string WeaponSummary;
-            public FireMode FireMode;
             public bool HasAttackTarget;
             public int OrderCount;
             public bool HasDestination;
@@ -110,14 +109,10 @@ namespace Space.Presentation.Controls
             {
                 if (keyboard.tabKey.wasPressedThisFrame)
                     SelectNext(em, keyboard.shiftKey.isPressed ? -1 : 1);
-                if (keyboard.fKey.wasPressedThisFrame)
-                    CycleFireMode(em);
 
-                // Power: Q shield, W energy weapons, E physical weapons, R engines; Shift takes a unit back.
+                // Power: Q shield, R engines; Shift takes a unit back. Weapons are switched on their cards.
                 var step = keyboard.shiftKey.isPressed ? -1 : 1;
                 if (keyboard.qKey.wasPressedThisFrame) ChangePower(PowerSystem.Shield, step);
-                if (keyboard.wKey.wasPressedThisFrame) ChangePower(PowerSystem.EnergyWeapons, step);
-                if (keyboard.eKey.wasPressedThisFrame) ChangePower(PowerSystem.PhysicalWeapons, step);
                 if (keyboard.rKey.wasPressedThisFrame) ChangePower(PowerSystem.Engines, step);
             }
 
@@ -126,6 +121,10 @@ namespace Space.Presentation.Controls
                 return;
 
             var pointer = mouse.position.ReadValue();
+
+            // A click on a HUD button (weapons, power) is not a click in space.
+            if (UiFocus.PointerOverHud(pointer))
+                return;
 
             // Alt + left drag orbits the camera (ShipCameraRig), so it must not change the selection.
             // A click in empty space keeps the current selection, so the camera never loses its target.
@@ -219,13 +218,7 @@ namespace Space.Presentation.Controls
             }
 
             if (em.HasBuffer<Weapon>(entity))
-            {
-                var weapons = em.GetBuffer<Weapon>(entity, isReadOnly: true);
-                info.WeaponCount = weapons.Length;
-                if (weapons.Length > 0)
-                    info.FireMode = weapons[0].Mode;
-                info.WeaponSummary = SummarizeWeapons(weapons);
-            }
+                info.WeaponCount = em.GetBuffer<Weapon>(entity, isReadOnly: true).Length;
 
             if (em.HasComponent<AttackTarget>(entity))
             {
@@ -302,32 +295,6 @@ namespace Space.Presentation.Controls
             return true;
         }
 
-        static readonly System.Text.StringBuilder SummaryBuilder = new();
-
-        static string SummarizeWeapons(DynamicBuffer<Weapon> weapons)
-        {
-            SummaryBuilder.Clear();
-            for (var i = 0; i < weapons.Length; i++)
-            {
-                if (i > 0)
-                    SummaryBuilder.Append('\n');
-                var weapon = weapons[i];
-                SummaryBuilder.Append(weapon.Type switch
-                {
-                    DamageType.Ion => "Ionique",
-                    DamageType.Laser => "Laser (énergie)",
-                    DamageType.Kinetic => "Canon (physique)",
-                    _ => "Missiles",
-                });
-                if (weapon.Ammo >= 0)
-                    SummaryBuilder.Append(" · ").Append(weapon.Ammo).Append(" mun.");
-                var charge = weapon.Cooldown > 0f ? 1f - weapon.CooldownLeft / weapon.Cooldown : 1f;
-                SummaryBuilder.Append(weapon.Ammo == 0 ? " · vide"
-                    : charge >= 1f ? (weapon.CurrentTarget != Entity.Null ? " · tire" : " · prête")
-                    : $" · {charge * 100f:0} %");
-            }
-            return SummaryBuilder.ToString();
-        }
 
         string GetName(EntityManager em, Entity entity)
         {
@@ -422,23 +389,120 @@ namespace Space.Presentation.Controls
             public int Compare(Entity a, Entity b) => a.Index.CompareTo(b.Index);
         }
 
-        /// <summary>F: Normal → Trigger happy → Conservative, for every weapon of the selected ship.</summary>
-        void CycleFireMode(EntityManager em)
+        /// <summary>What the weapon panel shows for one weapon of the player's armed ship.</summary>
+        public struct WeaponStatus
         {
-            if (!TryGetOrderableSelection(em, out var ship) || !em.HasBuffer<Weapon>(ship))
-                return;
+            public DamageType Type;
+            public bool IsEnergy;
+            public WeaponControl Control;
+            public bool Powered;
+            public bool Supercharged;
+            public bool CanSupercharge;
 
-            var weapons = em.GetBuffer<Weapon>(ship);
-            if (weapons.Length == 0)
-                return;
+            /// <summary>Units drawn when powered, and the extra units of the supercharge.</summary>
+            public int PowerDraw;
+            public int SuperchargeDraw;
+            public float SuperchargeDamageFactor;
 
-            var next = (FireMode)(((int)weapons[0].Mode + 1) % 3);
-            for (var i = 0; i < weapons.Length; i++)
+            /// <summary>Free units in the ship's reactor (to tell whether switching on is possible).</summary>
+            public int ReactorFree;
+
+            /// <summary>Reload progress, 0 (just fired) to 1 (ready).</summary>
+            public float Charge;
+
+            /// <summary>Seconds before the next shot; infinite when the weapon is not powered.</summary>
+            public float SecondsToReady;
+            public int Ammo;
+            public bool HasTarget;
+            public bool Ready => Charge >= 1f && Ammo != 0;
+            public bool CanPowerUp => Powered || ReactorFree >= PowerDraw;
+            public bool CanSuperchargeNow => Supercharged || (Powered && CanSupercharge && ReactorFree >= SuperchargeDraw);
+        }
+
+        /// <summary>
+        /// The ship whose weapons the panel shows: the selected ship when it is one of the player's,
+        /// otherwise the main ship (selecting an enemy does not hide your own weapons).
+        /// </summary>
+        Entity ArmedShip(EntityManager em)
+        {
+            if (TryGetOrderableSelection(em, out var ship) && IsLiveShip(em, ship))
+                return ship;
+            return IsLiveShip(em, _mainShip) ? _mainShip : Entity.Null;
+        }
+
+        /// <summary>Fills <paramref name="weapons"/> with the weapons of the player's armed ship.</summary>
+        public bool TryGetArmedShipWeapons(System.Collections.Generic.List<WeaponStatus> weapons, out string shipName)
+        {
+            weapons.Clear();
+            shipName = null;
+            if (!EnsureWorld())
+                return false;
+            var em = _world.EntityManager;
+            var ship = ArmedShip(em);
+            if (ship == Entity.Null || !em.HasBuffer<Weapon>(ship))
+                return false;
+
+            shipName = em.HasComponent<ShipName>(ship) ? em.GetComponentData<ShipName>(ship).Value.ToString() : "?";
+            var grid = em.HasComponent<PowerGrid>(ship) ? em.GetComponentData<PowerGrid>(ship) : default;
+            foreach (var weapon in em.GetBuffer<Weapon>(ship, isReadOnly: true))
             {
-                var weapon = weapons[i];
-                weapon.Mode = next;
-                weapons[i] = weapon;
+                weapons.Add(new WeaponStatus
+                {
+                    Type = weapon.Type,
+                    IsEnergy = weapon.IsEnergy,
+                    Control = weapon.Control,
+                    Powered = weapon.Powered,
+                    Supercharged = weapon.Supercharged,
+                    CanSupercharge = weapon.CanSupercharge,
+                    PowerDraw = weapon.PowerDraw,
+                    SuperchargeDraw = weapon.SuperchargeDraw,
+                    SuperchargeDamageFactor = weapon.SuperchargeDamageFactor,
+                    ReactorFree = grid.Free,
+                    Charge = WeaponMath.ChargeFraction(weapon.CooldownLeft, weapon.Cooldown, weapon.Mode),
+                    SecondsToReady = weapon.CooldownLeft <= 0f ? 0f : weapon.Powered ? weapon.CooldownLeft : float.PositiveInfinity,
+                    Ammo = weapon.Ammo,
+                    HasTarget = weapon.CurrentTarget != Entity.Null,
+                });
             }
+            return true;
+        }
+
+        /// <summary>Switches one weapon of the armed ship on (refused if the reactor lacks its units) or off.</summary>
+        public bool SetWeaponPowered(int index, bool powered) =>
+            ModifyWeapon(index, (ref PowerGrid grid, ref Weapon w) => WeaponPower.TrySetPowered(ref grid, ref w, powered));
+
+        /// <summary>Supercharges a powered weapon (refused if the reactor lacks the extra units) or brings it back to normal.</summary>
+        public bool SetWeaponSupercharged(int index, bool supercharged) =>
+            ModifyWeapon(index, (ref PowerGrid grid, ref Weapon w) => WeaponPower.TrySetSupercharged(ref grid, ref w, supercharged));
+
+        /// <summary>Holds fire, hands the weapon to its automatic control or takes manual control.</summary>
+        public bool SetWeaponControl(int index, WeaponControl control) =>
+            ModifyWeapon(index, (ref PowerGrid _, ref Weapon w) => { w.Control = control; return true; });
+
+        /// <summary>Manual fire order: the weapon fires at the next tick if it is charged and has a target.</summary>
+        public bool FireWeapon(int index) =>
+            ModifyWeapon(index, (ref PowerGrid _, ref Weapon w) => w.FireRequested = w.Control == WeaponControl.Manual);
+
+        delegate bool WeaponChange(ref PowerGrid grid, ref Weapon weapon);
+
+        /// <summary>Changes one weapon of the armed ship and its reactor together, so their power stays in step.</summary>
+        bool ModifyWeapon(int index, WeaponChange change)
+        {
+            if (!EnsureWorld())
+                return false;
+            var em = _world.EntityManager;
+            var ship = ArmedShip(em);
+            if (ship == Entity.Null || !em.HasBuffer<Weapon>(ship) || !em.HasComponent<PowerGrid>(ship))
+                return false;
+            var weapons = em.GetBuffer<Weapon>(ship);
+            if (index < 0 || index >= weapons.Length)
+                return false;
+            var weapon = weapons[index];
+            var grid = em.GetComponentData<PowerGrid>(ship);
+            var done = change(ref grid, ref weapon);
+            weapons[index] = weapon;
+            em.SetComponentData(ship, grid);
+            return done;
         }
 
         /// <summary>

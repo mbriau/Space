@@ -121,11 +121,12 @@ namespace Space.Core.Tests
 
     public class PowerMathTests
     {
+        /// <summary>The Cargo at the opening: shield 3, engines 2, its laser (3 units) on.</summary>
         static PowerGrid Grid() => new PowerGrid
         {
             Reactor = 8,
-            ShieldCapacity = 4, EnergyWeaponsCapacity = 3, PhysicalWeaponsCapacity = 2, EnginesCapacity = 3,
-            Shield = 3, EnergyWeapons = 3, Engines = 2,
+            ShieldCapacity = 4, EnginesCapacity = 3,
+            Shield = 3, Engines = 2, Weapons = 3,
         };
 
         [Test]
@@ -133,41 +134,44 @@ namespace Space.Core.Tests
         {
             var grid = Grid();
             Assert.AreEqual(0, grid.Free);
-            Assert.IsFalse(PowerMath.TryAdd(ref grid, PowerSystem.PhysicalWeapons));
+            Assert.IsFalse(PowerMath.TryAdd(ref grid, PowerSystem.Shield));
         }
 
         [Test]
-        public void MovingPowerBetweenSubsystems()
+        public void MovingPowerBetweenShieldAndEngines()
         {
             var grid = Grid();
-            Assert.IsTrue(PowerMath.TryRemove(ref grid, PowerSystem.EnergyWeapons));
-            Assert.IsTrue(PowerMath.TryAdd(ref grid, PowerSystem.PhysicalWeapons));
-            Assert.AreEqual(2, grid.EnergyWeapons);
-            Assert.AreEqual(1, grid.PhysicalWeapons);
-            Assert.AreEqual(0.5f, grid.Factor(PowerSystem.PhysicalWeapons));
+            Assert.IsTrue(PowerMath.TryRemove(ref grid, PowerSystem.Engines));
+            Assert.IsTrue(PowerMath.TryAdd(ref grid, PowerSystem.Shield));
+            Assert.AreEqual(4, grid.Shield);
+            Assert.AreEqual(1, grid.Engines);
+            Assert.AreEqual(1f / 3f, grid.Factor(PowerSystem.Engines), 1e-6f);
         }
 
         [Test]
         public void ASubsystemCannotExceedItsCapacity()
         {
             var grid = Grid();
-            PowerMath.TryRemove(ref grid, PowerSystem.Engines);
-            Assert.IsFalse(PowerMath.TryAdd(ref grid, PowerSystem.EnergyWeapons), "energy weapons already at 3/3");
+            grid.Weapons = 0;
             Assert.IsTrue(PowerMath.TryAdd(ref grid, PowerSystem.Shield));
+            Assert.IsFalse(PowerMath.TryAdd(ref grid, PowerSystem.Shield), "shield already at 4/4");
             Assert.AreEqual(4, grid.Shield);
         }
 
         [Test]
-        public void AllocateServesInOrderAndGivesTheRestToTheEngines()
+        public void AllocateServesTheShieldFirstAroundTheWeaponsAndKeepsTheRestFree()
         {
             var grid = Grid();
-            // "Shield broken: physical weapons on, everything else on the shield."
-            PowerMath.Allocate(ref grid, shield: 4, energyWeapons: 0, physicalWeapons: 2, engines: 0);
-            Assert.AreEqual(4, grid.Shield);
-            Assert.AreEqual(0, grid.EnergyWeapons);
-            Assert.AreEqual(2, grid.PhysicalWeapons);
-            Assert.AreEqual(2, grid.Engines);
-            Assert.AreEqual(8, grid.Allocated);
+            PowerMath.Allocate(ref grid, shield: 4, engines: 3);
+            Assert.AreEqual(4, grid.Shield, "8 - 3 for the laser = 5 units for shield and engines");
+            Assert.AreEqual(1, grid.Engines);
+            Assert.AreEqual(3, grid.Weapons, "the weapons keep their power");
+
+            PowerMath.Allocate(ref grid, shield: 2, engines: 1);
+            Assert.AreEqual(2, grid.Free, "what is not asked for stays free for the weapons");
+            PowerMath.FreeToEngines(ref grid);
+            Assert.AreEqual(3, grid.Engines);
+            Assert.AreEqual(0, grid.Free);
         }
 
         [Test]
