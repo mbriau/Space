@@ -107,6 +107,7 @@ namespace Space.Editor.Placeholders
                 ship.MaxSpeed = shipClass.MaxSpeed;
                 ship.Acceleration = shipClass.Acceleration;
                 ship.TurnRateDegrees = shipClass.TurnRate;
+                ConfigureCombat(ship, shipClass.Name);
 
                 PrefabUtility.SaveAsPrefabAsset(root, $"{Root}/Prefabs/{shipClass.Name}.prefab");
             }
@@ -116,6 +117,48 @@ namespace Space.Editor.Placeholders
             }
 
             return triangleCounts;
+        }
+
+        /// <summary>First-pass combat numbers, to be balanced in playtests.</summary>
+        static void ConfigureCombat(ShipAuthoring ship, string className)
+        {
+            ShipAuthoring.WeaponSpec Gun(float range, float damage, float cooldown, float spreadDegrees, float projectileSpeed = 1000f) =>
+                new() { Range = range, Damage = damage, CooldownSeconds = cooldown, SpreadDegrees = spreadDegrees, ProjectileSpeed = projectileSpeed };
+
+            ship.Team = ShipAuthoring.TeamId.Player;
+            ship.Weapons.Clear();
+            switch (className)
+            {
+                case "Drone":
+                    ship.Hull = 80f;
+                    ship.Weapons.Add(Gun(320f, 4f, 0.6f, 0.6f));
+                    break;
+                case "Cargo":
+                    // Very limited defence: one slow, imprecise turret.
+                    ship.Hull = 400f;
+                    ship.Weapons.Add(Gun(300f, 5f, 1.2f, 1.2f, 800f));
+                    break;
+                case "PirateFighter":
+                    ship.Team = ShipAuthoring.TeamId.Pirates;
+                    ship.Hull = 120f;
+                    ship.Weapons.Add(Gun(350f, 6f, 0.8f, 0.8f));
+                    break;
+                case "Corvette":
+                    ship.Hull = 300f;
+                    ship.Weapons.Add(Gun(400f, 8f, 1f, 0.6f));
+                    ship.Weapons.Add(Gun(400f, 8f, 1f, 0.6f));
+                    break;
+                case "Frigate":
+                    ship.Hull = 800f;
+                    for (var i = 0; i < 3; i++)
+                        ship.Weapons.Add(Gun(500f, 12f, 1.5f, 0.5f));
+                    break;
+                case "Capital":
+                    ship.Hull = 3000f;
+                    for (var i = 0; i < 6; i++)
+                        ship.Weapons.Add(Gun(700f, 20f, 2f, 0.4f, 1200f));
+                    break;
+            }
         }
 
         struct Greeble

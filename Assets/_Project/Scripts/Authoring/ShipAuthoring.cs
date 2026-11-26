@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using Space.Core.Combat;
 using Space.Core.Orders;
 using Space.Core.Ships;
 using Unity.Collections;
@@ -11,9 +14,32 @@ namespace Space.Authoring
     [DisallowMultipleComponent]
     public class ShipAuthoring : MonoBehaviour
     {
+        public enum TeamId : byte
+        {
+            Player = Space.Core.Combat.Team.Player,
+            Pirates = Space.Core.Combat.Team.Pirates,
+        }
+
+        [Serializable]
+        public class WeaponSpec
+        {
+            [Min(0f)] public float Range = 300f;
+            [Min(0f)] public float Damage = 5f;
+            [Min(0.05f)] public float CooldownSeconds = 1f;
+            [Min(1f)] public float ProjectileSpeed = 1000f;
+            [Min(0f)] public float SpreadDegrees = 0.8f;
+            public FireMode Mode = FireMode.Normal;
+        }
+
+        [Header("Déplacement")]
         [Min(0f)] public float MaxSpeed = 50f;
         [Min(0f)] public float Acceleration = 10f;
         [Min(0f)] public float TurnRateDegrees = 45f;
+
+        [Header("Combat")]
+        public TeamId Team = TeamId.Player;
+        [Min(1f)] public float Hull = 100f;
+        public List<WeaponSpec> Weapons = new();
 
         class Baker : Baker<ShipAuthoring>
         {
@@ -42,7 +68,26 @@ namespace Space.Authoring
                     Acceleration = authoring.Acceleration,
                     TurnRateRadians = math.radians(authoring.TurnRateDegrees),
                 });
+                AddComponent(entity, new FollowTarget());
                 AddBuffer<ShipCommand>(entity);
+
+                AddComponent(entity, new Space.Core.Combat.Team { Value = (byte)authoring.Team });
+                AddComponent(entity, new Hull { Current = authoring.Hull, Max = authoring.Hull });
+                AddComponent(entity, new AttackTarget());
+                var weapons = AddBuffer<Weapon>(entity);
+                foreach (var spec in authoring.Weapons)
+                {
+                    weapons.Add(new Weapon
+                    {
+                        Range = spec.Range,
+                        Damage = spec.Damage,
+                        Cooldown = spec.CooldownSeconds,
+                        ProjectileSpeed = spec.ProjectileSpeed,
+                        Spread = math.radians(spec.SpreadDegrees),
+                        Mode = spec.Mode,
+                        Enabled = true,
+                    });
+                }
             }
         }
     }

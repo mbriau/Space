@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de19302233ab98941851d24f8ab12528, type: 3}
+  m_Name: L01_CeintureKessler
+  m_EditorClassIdentifier: Space.Core::Space.Core.Levels.LevelDefinition
+  DisplayName: Ceinture de Kessler
+  Description: "Un pirate isol\xE9 r\xF4de entre les rochers."
+  Environment: "Champ d'ast\xE9ro\xEFdes"
+  SurviveSeconds: 60
+  WinWhenEnemiesDestroyed: 1
+  Flagship: Cargo
+  Escorts:
+  - Ship: Drone
+    Offset: {x: -35, y: 0, z: -15}
+  - Ship: Drone
+    Offset: {x: 35, y: 0, z: -15}
+  Enemies:
+  - Ship: PirateFighter
+    DelaySeconds: 3
+    Distance: 900
+    AngleDegrees: 20
+  RewardCredits: 100
+  NextLevels:
+  - {fileID: 11400000, guid: 0ccb89bdeb11c0146a30f20cc380eef8, type: 2}
+  - {fileID: 11400000, guid: 6b66a6fdcad78c844be1a8f019683838, type: 2}

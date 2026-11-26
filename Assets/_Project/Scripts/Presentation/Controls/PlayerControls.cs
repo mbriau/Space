@@ -1,3 +1,4 @@
+using Space.Core.Combat;
 using Space.Core.Orders;
 using Space.Core.Ships;
 using Space.Core.Time;
@@ -12,15 +13,16 @@ using UnityEngine.InputSystem;
 namespace Space.Presentation.Controls
 {
     /// <summary>
-    /// Mouse controls for the local player (M1): left click selects a ship, right click orders the
-    /// selected ship to move to the clicked point on the horizontal plane through the ship
-    /// (Shift + right click appends to its order queue). Orders go through the ship's
-    /// <see cref="ShipCommand"/> buffer, like every other order source.
+    /// Mouse and keyboard controls for the local player (M1):
+    /// left click or Tab selects a ship; right click orders the selected ship to move to the clicked
+    /// point on the game plane (Shift appends to its queue), or to attack the enemy ship under the
+    /// pointer; F cycles the fire mode of its weapons. Orders go through the same components as the
+    /// AI's (<see cref="ShipCommand"/> queue, <see cref="AttackTarget"/>).
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class PlayerControls : MonoBehaviour
     {
-        [Tooltip("Name of the player's main ship: selected when the level starts, centre of the range rings.")]
+        [Tooltip("Name of the player's main ship when no ship carries the PlayerFlagship tag (Sandbox).")]
         [UnityEngine.Serialization.FormerlySerializedAs("InitialSelection")]
         public string MainShipName = "Cargo";
 
@@ -35,6 +37,12 @@ namespace Space.Presentation.Controls
             public float Radius;
             public float Speed;
             public string Name;
+            public bool IsPlayerShip;
+            public float Hull;
+            public float HullMax;
+            public int WeaponCount;
+            public FireMode FireMode;
+            public bool HasAttackTarget;
             public int OrderCount;
             public bool HasDestination;
             public Vector3 DestinationRenderPosition;
@@ -44,9 +52,9 @@ namespace Space.Presentation.Controls
         World _world;
         EntityQuery _ships;
         EntityQuery _selected;
+        EntityQuery _flagships;
         EntityQuery _time;
         EntityQuery _origin;
-        bool _initialSelectionDone;
         Entity _mainShip;
         Entity _nameCacheEntity;
         string _nameCache;
@@ -69,9 +77,9 @@ namespace Space.Presentation.Controls
                 _ships = em.CreateEntityQuery(ComponentType.ReadOnly<Ship>(), ComponentType.ReadOnly<LocalToWorld>(),
                                               ComponentType.ReadOnly<ShipRadius>());
                 _selected = em.CreateEntityQuery(ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<LocalToWorld>());
+                _flagships = em.CreateEntityQuery(ComponentType.ReadOnly<PlayerFlagship>(), ComponentType.ReadOnly<LocalToWorld>());
                 _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
                 _origin = em.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
-                _initialSelectionDone = false;
                 _mainShip = Entity.Null;
             }
             return true;
@@ -83,19 +91,16 @@ namespace Space.Presentation.Controls
                 return;
 
             var em = _world.EntityManager;
-            if (!_initialSelectionDone)
-            {
-                _mainShip = FindByName(em, MainShipName);
-                if (_mainShip != Entity.Null)
-                {
-                    Select(em, _mainShip);
-                    _initialSelectionDone = true;
-                }
-            }
+            TrackMainShip(em);
 
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
-                SelectNext(em, keyboard.shiftKey.isPressed ? -1 : 1);
+            if (keyboard != null)
+            {
+                if (keyboard.tabKey.wasPressedThisFrame)
+                    SelectNext(em, keyboard.shiftKey.isPressed ? -1 : 1);
+                if (keyboard.fKey.wasPressedThisFrame)
+                    CycleFireMode(em);
+            }
 
             var mouse = Mouse.current;
             if (mouse == null)
@@ -113,11 +118,42 @@ namespace Space.Presentation.Controls
                     Select(em, picked);
             }
 
-            if (mouse.rightButton.wasPressedThisFrame)
+            if (mouse.rightButton.wasPressedThisFrame && TryGetOrderableSelection(em, out var ship))
             {
-                var append = keyboard != null && keyboard.shiftKey.isPressed;
-                IssueMoveOrder(em, pointer, append);
+                var picked = Pick(em, pointer);
+                if (picked != Entity.Null && IsEnemyOf(em, picked, ship))
+                    em.SetComponentData(ship, new AttackTarget { Value = picked });
+                else
+                    IssueMoveOrder(em, ship, pointer, keyboard != null && keyboard.shiftKey.isPressed);
             }
+        }
+
+        /// <summary>
+        /// Follows the player's main ship (PlayerFlagship tag, or <see cref="MainShipName"/>): selects
+        /// it when it appears (new level) and whenever nothing is selected.
+        /// </summary>
+        void TrackMainShip(EntityManager em)
+        {
+            if (_mainShip == Entity.Null || !em.Exists(_mainShip))
+            {
+                _mainShip = FindMainShip(em);
+                if (_mainShip != Entity.Null)
+                    Select(em, _mainShip);
+            }
+            else if (_selected.IsEmpty)
+            {
+                Select(em, _mainShip);
+            }
+        }
+
+        Entity FindMainShip(EntityManager em)
+        {
+            if (!_flagships.IsEmpty)
+            {
+                using var flagships = _flagships.ToEntityArray(Allocator.Temp);
+                return flagships[0];
+            }
+            return FindByName(em, MainShipName);
         }
 
         /// <summary>Returns the selected ship, if any. Used by the camera rig and the HUD.</summary>
@@ -136,6 +172,28 @@ namespace Space.Presentation.Controls
             info.Radius = em.HasComponent<ShipRadius>(entity) ? em.GetComponentData<ShipRadius>(entity).Value : 1f;
             info.Speed = em.HasComponent<ShipVelocity>(entity) ? math.length(em.GetComponentData<ShipVelocity>(entity).Linear) : 0f;
             info.Name = GetName(em, entity);
+            info.IsPlayerShip = IsPlayerShip(em, entity);
+
+            if (em.HasComponent<Hull>(entity))
+            {
+                var hull = em.GetComponentData<Hull>(entity);
+                info.Hull = hull.Current;
+                info.HullMax = hull.Max;
+            }
+
+            if (em.HasBuffer<Weapon>(entity))
+            {
+                var weapons = em.GetBuffer<Weapon>(entity, isReadOnly: true);
+                info.WeaponCount = weapons.Length;
+                if (weapons.Length > 0)
+                    info.FireMode = weapons[0].Mode;
+            }
+
+            if (em.HasComponent<AttackTarget>(entity))
+            {
+                var target = em.GetComponentData<AttackTarget>(entity).Value;
+                info.HasAttackTarget = target != Entity.Null && em.Exists(target);
+            }
 
             if (em.HasBuffer<ShipCommand>(entity))
             {
@@ -147,6 +205,21 @@ namespace Space.Presentation.Controls
                     info.DestinationRenderPosition = (float3)(commands[0].Point - GetOrigin());
                 }
             }
+            return true;
+        }
+
+        /// <summary>Render-space position of the player's main ship (centre of the range rings).</summary>
+        public bool TryGetMainShipPosition(out Vector3 renderPosition)
+        {
+            renderPosition = default;
+            if (!EnsureWorld() || _mainShip == Entity.Null)
+                return false;
+
+            var em = _world.EntityManager;
+            if (!em.Exists(_mainShip) || !em.HasComponent<LocalToWorld>(_mainShip))
+                return false;
+
+            renderPosition = em.GetComponentData<LocalToWorld>(_mainShip).Position;
             return true;
         }
 
@@ -165,19 +238,26 @@ namespace Space.Presentation.Controls
             return _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
         }
 
-        /// <summary>Render-space position of the player's main ship (centre of the range rings).</summary>
-        public bool TryGetMainShipPosition(out Vector3 renderPosition)
+        static bool IsPlayerShip(EntityManager em, Entity entity)
         {
-            renderPosition = default;
-            if (!EnsureWorld() || _mainShip == Entity.Null)
-                return false;
+            return !em.HasComponent<Team>(entity) || em.GetComponentData<Team>(entity).Value == Team.Player;
+        }
 
-            var em = _world.EntityManager;
-            if (!em.Exists(_mainShip) || !em.HasComponent<LocalToWorld>(_mainShip))
-                return false;
+        static bool IsEnemyOf(EntityManager em, Entity candidate, Entity ship)
+        {
+            return em.HasComponent<Team>(candidate) && em.HasComponent<Team>(ship)
+                && em.GetComponentData<Team>(candidate).Value != em.GetComponentData<Team>(ship).Value;
+        }
 
-            renderPosition = em.GetComponentData<LocalToWorld>(_mainShip).Position;
-            return true;
+        /// <summary>The selected ship, if the player may give it orders.</summary>
+        bool TryGetOrderableSelection(EntityManager em, out Entity ship)
+        {
+            ship = Entity.Null;
+            if (_selected.IsEmpty)
+                return false;
+            using var entities = _selected.ToEntityArray(Allocator.Temp);
+            ship = entities[0];
+            return IsPlayerShip(em, ship);
         }
 
         Entity FindByName(EntityManager em, string shipName)
@@ -195,29 +275,55 @@ namespace Space.Presentation.Controls
             return Entity.Null;
         }
 
-        /// <summary>Tab / Shift+Tab: cycles through the ships in a stable order.</summary>
+        /// <summary>Tab / Shift+Tab: cycles through the player's ships in a stable order.</summary>
         void SelectNext(EntityManager em, int step)
         {
             if (_ships.IsEmpty)
                 return;
 
-            using var entities = _ships.ToEntityArray(Allocator.Temp);
-            entities.Sort(new EntityIndexComparer());
+            using var all = _ships.ToEntityArray(Allocator.Temp);
+            var own = new NativeList<Entity>(all.Length, Allocator.Temp);
+            foreach (var entity in all)
+                if (IsPlayerShip(em, entity))
+                    own.Add(entity);
+            if (own.Length == 0)
+                return;
+            own.Sort(new EntityIndexComparer());
 
             var current = -1;
             if (!_selected.IsEmpty)
             {
                 using var selected = _selected.ToEntityArray(Allocator.Temp);
-                current = entities.IndexOf(selected[0]);
+                current = own.IndexOf(selected[0]);
             }
 
-            var next = current < 0 ? 0 : (current + step + entities.Length) % entities.Length;
-            Select(em, entities[next]);
+            var next = current < 0 ? 0 : (current + step + own.Length) % own.Length;
+            Select(em, own[next]);
+            own.Dispose();
         }
 
         struct EntityIndexComparer : System.Collections.Generic.IComparer<Entity>
         {
             public int Compare(Entity a, Entity b) => a.Index.CompareTo(b.Index);
+        }
+
+        /// <summary>F: Normal → Trigger happy → Conservative, for every weapon of the selected ship.</summary>
+        void CycleFireMode(EntityManager em)
+        {
+            if (!TryGetOrderableSelection(em, out var ship) || !em.HasBuffer<Weapon>(ship))
+                return;
+
+            var weapons = em.GetBuffer<Weapon>(ship);
+            if (weapons.Length == 0)
+                return;
+
+            var next = (FireMode)(((int)weapons[0].Mode + 1) % 3);
+            for (var i = 0; i < weapons.Length; i++)
+            {
+                var weapon = weapons[i];
+                weapon.Mode = next;
+                weapons[i] = weapon;
+            }
         }
 
         /// <summary>Closest ship under the pointer, using each ship's projected radius.</summary>
@@ -247,7 +353,7 @@ namespace Space.Presentation.Controls
             return best;
         }
 
-        /// <summary>Selects <paramref name="entity"/> (or clears the selection) and makes it the floating-origin anchor.</summary>
+        /// <summary>Selects <paramref name="entity"/> and makes it the floating-origin anchor.</summary>
         void Select(EntityManager em, Entity entity)
         {
             em.RemoveComponent<Selected>(_selected);
@@ -261,18 +367,13 @@ namespace Space.Presentation.Controls
             em.AddComponent<FloatingOriginAnchor>(entity);
         }
 
-        void IssueMoveOrder(EntityManager em, Vector2 pointer, bool append)
+        void IssueMoveOrder(EntityManager em, Entity ship, Vector2 pointer, bool append)
         {
-            if (_selected.IsEmpty)
+            if (!em.HasBuffer<ShipCommand>(ship))
                 return;
 
-            using var entities = _selected.ToEntityArray(Allocator.Temp);
-            var entity = entities[0];
-            if (!em.HasBuffer<ShipCommand>(entity))
-                return;
-
-            // Destination on the horizontal plane through the ship.
-            var shipPosition = (Vector3)em.GetComponentData<LocalToWorld>(entity).Position;
+            // Destination on the game plane through the ship.
+            var shipPosition = (Vector3)em.GetComponentData<LocalToWorld>(ship).Position;
             var ray = _camera.ScreenPointToRay(pointer);
             if (Mathf.Abs(ray.direction.y) < 1e-4f)
                 return;
@@ -284,7 +385,7 @@ namespace Space.Presentation.Controls
             var simPoint = (double3)(float3)renderPoint + GetOrigin();
             var tick = _time.IsEmpty ? 0u : _time.GetSingleton<SimulationTime>().Tick;
 
-            var commands = em.GetBuffer<ShipCommand>(entity);
+            var commands = em.GetBuffer<ShipCommand>(ship);
             if (!append)
                 commands.Clear();
             commands.Add(new ShipCommand

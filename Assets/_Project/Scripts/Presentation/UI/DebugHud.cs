@@ -1,6 +1,10 @@
+using Space.Core.Combat;
+using Space.Core.Ships;
 using Space.Core.Time;
 using Space.Presentation.Controls;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace Space.Presentation.UI
@@ -19,6 +23,8 @@ namespace Space.Presentation.UI
         Camera _camera;
         World _world;
         EntityQuery _time;
+        World _hullWorld;
+        EntityQuery _hullQuery;
         GUIStyle _big;
         GUIStyle _panel;
 
@@ -60,19 +66,75 @@ namespace Space.Presentation.UI
                 GUI.Label(new Rect(16, 40, 400, 22), $"Tick {time.Tick}   Temps {time.ElapsedTime:0.0} s");
             }
 
+            GUI.Label(new Rect(16, Screen.height - 48, Screen.width - 32, 22),
+                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou attaquer un ennemi   F : mode de tir");
             GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
-                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter)   Molette : zoom   " +
-                "Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
+                "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
+
+            if (Event.current.type == EventType.Repaint)
+                DrawHullBars();
 
             if (Controls == null || !Controls.TryGetSelection(out var selection))
                 return;
 
-            GUI.Box(new Rect(16, Screen.height - 120, 260, 84),
-                $"{selection.Name}\nVitesse : {selection.Speed:0.0} m/s\nOrdres en file : {selection.OrderCount}", _panel);
+            var text = $"{selection.Name}{(selection.IsPlayerShip ? "" : " (ennemi)")}\n" +
+                       $"Coque : {selection.Hull:0} / {selection.HullMax:0}\n" +
+                       $"Vitesse : {selection.Speed:0.0} m/s\n" +
+                       $"Ordres en file : {selection.OrderCount}";
+            if (selection.WeaponCount > 0)
+                text += $"\nArmes : {selection.WeaponCount} · tir {FireModeLabel(selection.FireMode)}" +
+                        (selection.HasAttackTarget ? " · cible imposée" : "");
+            GUI.Box(new Rect(16, Screen.height - 180, 300, 124), text, _panel);
 
             DrawBrackets(selection.RenderPosition, selection.Radius, MarkerColor);
             if (selection.HasDestination)
                 DrawBrackets(selection.DestinationRenderPosition, 0f, DestinationColor);
+        }
+
+        static string FireModeLabel(FireMode mode) => mode switch
+        {
+            FireMode.TriggerHappy => "nerveux",
+            FireMode.Conservative => "prudent",
+            _ => "normal",
+        };
+
+        /// <summary>A small hull bar above every ship: green for the player's ships, red for enemies.</summary>
+        void DrawHullBars()
+        {
+            if (_world == null || !_world.IsCreated)
+                return;
+            if (_hullQuery == default || _hullWorld != _world)
+            {
+                _hullWorld = _world;
+                _hullQuery = _world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Hull>(), ComponentType.ReadOnly<Team>(),
+                                                                    ComponentType.ReadOnly<LocalToWorld>(), ComponentType.ReadOnly<ShipRadius>());
+            }
+
+            using var hulls = _hullQuery.ToComponentDataArray<Hull>(Allocator.Temp);
+            using var teams = _hullQuery.ToComponentDataArray<Team>(Allocator.Temp);
+            using var transforms = _hullQuery.ToComponentDataArray<LocalToWorld>(Allocator.Temp);
+            using var radii = _hullQuery.ToComponentDataArray<ShipRadius>(Allocator.Temp);
+            var pixelsPerMetreAtUnitDistance = Screen.height * 0.5f / Mathf.Tan(_camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+
+            for (var i = 0; i < hulls.Length; i++)
+            {
+                var screen = _camera.WorldToScreenPoint(transforms[i].Position);
+                if (screen.z <= 0f)
+                    continue;
+
+                var radiusPixels = Mathf.Max(12f, radii[i].Value * pixelsPerMetreAtUnitDistance / screen.z);
+                const float width = 36f;
+                const float height = 4f;
+                var x = screen.x - width * 0.5f;
+                var y = Screen.height - screen.y - radiusPixels - 10f;
+                var fraction = hulls[i].Max > 0f ? Mathf.Clamp01(hulls[i].Current / hulls[i].Max) : 0f;
+
+                GUI.color = new Color(0f, 0f, 0f, 0.6f);
+                GUI.DrawTexture(new Rect(x - 1, y - 1, width + 2, height + 2), Texture2D.whiteTexture);
+                GUI.color = teams[i].Value == Team.Player ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.35f, 0.25f);
+                GUI.DrawTexture(new Rect(x, y, width * fraction, height), Texture2D.whiteTexture);
+            }
+            GUI.color = Color.white;
         }
 
         /// <summary>Square brackets around a world point, sized from its radius (minimum 12 px).</summary>

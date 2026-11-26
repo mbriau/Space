@@ -79,6 +79,15 @@ MonoBehaviour:
   MaxSpeed: 120
   Acceleration: 40
   TurnRateDegrees: 180
+  Team: 0
+  Hull: 80
+  Weapons:
+  - Range: 320
+    Damage: 4
+    CooldownSeconds: 0.6
+    ProjectileSpeed: 1000
+    SpreadDegrees: 0.6
+    Mode: 0
 --- !u!1 &2065682464045045708
 GameObject:
   m_ObjectHideFlags: 0

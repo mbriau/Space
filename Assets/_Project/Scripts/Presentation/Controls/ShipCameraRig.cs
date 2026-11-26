@@ -29,6 +29,9 @@ namespace Space.Presentation.Controls
         [Tooltip("How quickly the zoom reaches its target (higher is snappier).")]
         public float ZoomSharpness = 12f;
 
+        [Tooltip("First framing: camera distance in ship radii, wide enough to see the fight around the ship.")]
+        [Min(1f)] public float FirstFramingRadii = 12f;
+
         [Tooltip("Duration of the camera glide from one ship to the next, in seconds.")]
         [Min(0f)] public float TransitionDuration = 0.5f;
 
@@ -84,7 +87,7 @@ namespace Space.Presentation.Controls
             _transitionTime = first ? float.MaxValue : 0f;
 
             if (first)
-                _targetDistance = Mathf.Clamp(selection.Radius * 4f, MinDistance, MaxDistance);
+                _targetDistance = Mathf.Clamp(selection.Radius * FirstFramingRadii, MinDistance, MaxDistance);
             else if (_framedRadius > 0f && selection.Radius > 0f)
             {
                 var factor = Mathf.Pow(selection.Radius / _framedRadius, SizeInfluence);

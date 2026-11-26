@@ -50,6 +50,22 @@ Menu **Space > Generate Placeholder Ships** : génère dans `Assets/_Project/Art
 un matériau URP Lit par classe et un `ShipAuthoring` sur chaque prefab. Le nombre de triangles par LOD
 est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGenerator.Classes`.
 
+## Niveaux (M1, sprint 2)
+
+- Scène `Assets/_Project/Scenes/Level.unity` (première du build) : caméra avec les contrôles, `Level Runner`
+  et une sous-scène `Level_Content.unity` qui contient la bibliothèque de vaisseaux (`ShipLibraryAuthoring`).
+- Un niveau est un asset `LevelDefinition` (Assets > Create > Space > Level Definition), dans
+  `Assets/_Project/Data/Levels` : environnement, durée de survie, drones en formation autour du vaisseau
+  principal, pirates (délai, distance, angle), récompense et 2 ou 3 destinations suivantes.
+- La simulation fait apparaître les vaisseaux au bon tick (`LevelSpawnSystem`) et décide de la victoire
+  ou de la défaite (`LevelObjectiveSystem`). `LevelRunner` affiche l'objectif, verse la récompense et
+  propose la suite ; la défaite propose une nouvelle partie.
+- Combat entièrement par ordres : chaque arme choisit sa cible (l'ennemi le plus proche à portée, ou la
+  cible imposée par clic droit) et tire selon la probabilité de toucher et son mode : normal, nerveux
+  (tire plus vite et plus souvent, rate davantage) ou prudent (ne tire que les coups presque sûrs).
+  Touche F pour changer de mode. Les tirs sont résolus avec un tirage déterministe par tick.
+- Les drones tiennent leur place dans la formation du vaisseau principal quand ils n'ont pas d'ordre.
+
 ## Scène de test
 
 `Assets/_Project/Scenes/Sandbox.unity` contient une lumière, une caméra et une sous-scène (`Sandbox_Ships.unity`)

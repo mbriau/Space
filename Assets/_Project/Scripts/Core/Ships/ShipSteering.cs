@@ -22,23 +22,40 @@ namespace Space.Core.Ships
         public static bool MoveTowards(ref double3 position, ref quaternion rotation, ref float3 velocity,
                                        double3 target, in ShipMovementStats stats, float dt)
         {
+            return MoveTowards(ref position, ref rotation, ref velocity, target, float3.zero, stats, dt);
+        }
+
+        /// <summary>
+        /// Advances one tick toward a target moving at <paramref name="targetVelocity"/> (a formation
+        /// slot): the ship matches that velocity once there. Returns true while it holds the target.
+        /// </summary>
+        public static bool MoveTowards(ref double3 position, ref quaternion rotation, ref float3 velocity,
+                                       double3 target, float3 targetVelocity, in ShipMovementStats stats, float dt)
+        {
             var offset = (float3)(target - position);
             var distance = math.length(offset);
 
-            if (distance <= ArrivalDistance && math.length(velocity) <= ArrivalSpeed)
+            if (distance <= ArrivalDistance && math.length(velocity - targetVelocity) <= ArrivalSpeed)
             {
-                velocity = float3.zero;
+                velocity = targetVelocity;
+                position += (double3)(velocity * dt);
                 return true;
             }
 
             var direction = distance > 1e-4f ? offset / distance : float3.zero;
 
-            // Highest speed from which the ship can still stop on the target: v² = 2·a·d.
+            // Highest closing speed from which the ship can still stop on the target: v² = 2·a·d.
             var brakingDistance = math.max(0f, distance - ArrivalDistance * 0.5f);
-            var desiredSpeed = math.min(stats.MaxSpeed, math.sqrt(2f * stats.Acceleration * brakingDistance));
+            var closingSpeed = math.sqrt(2f * stats.Acceleration * brakingDistance);
+            var desiredVelocity = direction * closingSpeed + targetVelocity;
+            var desiredSpeed = math.length(desiredVelocity);
+            if (desiredSpeed > stats.MaxSpeed)
+                desiredVelocity *= stats.MaxSpeed / desiredSpeed;
 
-            Turn(ref rotation, direction, stats.TurnRateRadians * dt);
-            Accelerate(ref velocity, direction * desiredSpeed, rotation, stats, dt);
+            // Face the way the ship has to go; once holding a moving slot, face the slot's motion.
+            var heading = math.lengthsq(desiredVelocity) > 1e-4f ? math.normalize(desiredVelocity) : direction;
+            Turn(ref rotation, heading, stats.TurnRateRadians * dt);
+            Accelerate(ref velocity, desiredVelocity, rotation, stats, dt);
             position += (double3)(velocity * dt);
             return false;
         }

@@ -6,7 +6,8 @@ namespace Space.Core.Ships
 {
     /// <summary>
     /// Executes the head of each ship's order queue once per simulation tick. MoveTo orders are
-    /// removed when the ship arrives; with no order left, the ship brakes to a stop.
+    /// removed when the ship arrives. With no order left, a ship holds its formation slot if it has
+    /// one, otherwise it brakes to a stop.
     /// </summary>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(StorePreviousTransformSystem))]
@@ -25,22 +26,29 @@ namespace Space.Core.Ships
             public float DeltaTime;
 
             void Execute(ref SimPosition position, ref SimRotation rotation, ref ShipVelocity velocity,
-                         in ShipMovementStats stats, DynamicBuffer<ShipCommand> commands)
+                         in ShipMovementStats stats, in FollowTarget follow, DynamicBuffer<ShipCommand> commands)
             {
                 // Orders this system does not execute yet (Dock, Undock) are dropped so they cannot block the queue.
                 while (commands.Length > 0 && commands[0].Type != ShipCommandType.MoveTo)
                     commands.RemoveAt(0);
 
-                if (commands.Length == 0)
+                if (commands.Length > 0)
                 {
-                    ShipSteering.Brake(ref position.Value, rotation.Value, ref velocity.Linear, stats, DeltaTime);
+                    var arrived = ShipSteering.MoveTowards(ref position.Value, ref rotation.Value, ref velocity.Linear,
+                                                           commands[0].Point, stats, DeltaTime);
+                    if (arrived)
+                        commands.RemoveAt(0);
                     return;
                 }
 
-                var arrived = ShipSteering.MoveTowards(ref position.Value, ref rotation.Value, ref velocity.Linear,
-                                                       commands[0].Point, stats, DeltaTime);
-                if (arrived)
-                    commands.RemoveAt(0);
+                if (follow.Valid)
+                {
+                    ShipSteering.MoveTowards(ref position.Value, ref rotation.Value, ref velocity.Linear,
+                                             follow.Point, follow.Velocity, stats, DeltaTime);
+                    return;
+                }
+
+                ShipSteering.Brake(ref position.Value, rotation.Value, ref velocity.Linear, stats, DeltaTime);
             }
         }
     }
