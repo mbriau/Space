@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Space.Core.Combat;
+using Space.Core.Time;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -7,8 +8,9 @@ using UnityEngine;
 namespace Space.Presentation.Rendering
 {
     /// <summary>
-    /// Draws the shots of the last simulation ticks as short-lived tracer lines, then clears the
-    /// <see cref="ShotEvent"/> queue. Hits are bright, misses faint.
+    /// Projectiles in flight: each shot travels from the gun to its impact point in simulated time
+    /// (it freezes on pause and speeds up with x2 / x4). Shells are short and heavy, energy bolts
+    /// long and bright; misses fly on past the target and fade.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class TracerRenderer : MonoBehaviour
@@ -20,34 +22,43 @@ namespace Space.Presentation.Rendering
         public Color PlayerColor = new Color(0.45f, 1f, 0.6f, 1f);
         public Color EnemyColor = new Color(1f, 0.3f, 0.25f, 1f);
         public Color IonColor = new Color(0.55f, 0.55f, 1f, 1f);
-        public Color KineticColor = new Color(1f, 0.9f, 0.55f, 1f);
+        public Color KineticColor = new Color(1f, 0.85f, 0.45f, 1f);
         public Color MissileColor = new Color(1f, 0.6f, 0.15f, 1f);
-        [Range(0f, 1f)] public float MissAlpha = 0.35f;
-        [Min(0.01f)] public float Lifetime = 0.15f;
-        public float WidthPerMetreOfDistance = 0.002f;
-        [Min(1)] public int MaxTracers = 128;
+        [Range(0f, 1f)] public float MissAlpha = 0.5f;
+        public float WidthPerMetreOfDistance = 0.003f;
+        [Min(1)] public int MaxProjectiles = 128;
 
-        struct Tracer
+        struct Projectile
         {
             public LineRenderer Line;
+            public Vector3 From;
+            public Vector3 To;
+            public float Flight;
             public float Age;
+            public float Length;
+            public float WidthFactor;
+            public bool Hit;
             public Color Color;
         }
 
-        readonly List<Tracer> _active = new();
+        /// <summary>Simulated seconds a miss keeps flying past its end point while fading.</summary>
+        const float MissOvershoot = 0.6f;
+
+        readonly List<Projectile> _active = new();
         readonly Stack<LineRenderer> _pool = new();
         Camera _camera;
         Transform _root;
         World _world;
         EntityQuery _shots;
         EntityQuery _origin;
+        EntityQuery _time;
 
         void Awake()
         {
             _camera = GetComponent<Camera>();
             if (Material == null)
                 Material = new Material(Shader.Find("Sprites/Default"));
-            _root = new GameObject("Tracers").transform;
+            _root = new GameObject("Projectiles").transform;
         }
 
         void OnDestroy()
@@ -58,81 +69,116 @@ namespace Space.Presentation.Rendering
 
         void LateUpdate()
         {
-            Age();
+            if (!EnsureWorld())
+                return;
             ReadShots();
+            Animate(SimulatedDeltaTime());
         }
 
-        void Age()
+        bool EnsureWorld()
         {
-            for (var i = _active.Count - 1; i >= 0; i--)
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null || !world.IsCreated)
+                return false;
+            if (world != _world)
             {
-                var tracer = _active[i];
-                tracer.Age += Time.unscaledDeltaTime;
-                if (tracer.Age >= Lifetime)
-                {
-                    tracer.Line.gameObject.SetActive(false);
-                    _pool.Push(tracer.Line);
-                    _active.RemoveAt(i);
-                    continue;
-                }
-
-                var color = tracer.Color;
-                color.a *= 1f - tracer.Age / Lifetime;
-                tracer.Line.startColor = tracer.Line.endColor = color;
-                _active[i] = tracer;
+                _world = world;
+                var em = world.EntityManager;
+                _shots = em.CreateEntityQuery(ComponentType.ReadOnly<ShotEventQueue>());
+                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
             }
+            return true;
+        }
+
+        float SimulatedDeltaTime()
+        {
+            if (_time.IsEmpty)
+                return Time.deltaTime;
+            var time = _time.GetSingleton<SimulationTime>();
+            return time.Paused ? 0f : Time.deltaTime * time.TimeScale;
         }
 
         void ReadShots()
         {
-            var world = World.DefaultGameObjectInjectionWorld;
-            if (world == null || !world.IsCreated)
-                return;
-            if (world != _world)
-            {
-                _world = world;
-                _shots = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ShotEventQueue>());
-                _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
-            }
             if (_shots.IsEmpty)
                 return;
 
             var origin = _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
-            var buffer = world.EntityManager.GetBuffer<ShotEvent>(_shots.GetSingletonEntity());
-            var cameraPosition = _camera.transform.position;
-
+            var buffer = _world.EntityManager.GetBuffer<ShotEvent>(_shots.GetSingletonEntity());
             foreach (var shot in buffer)
             {
-                if (_active.Count >= MaxTracers)
+                if (_active.Count >= MaxProjectiles)
                     break;
 
-                var from = (Vector3)(float3)(shot.From - origin);
-                var to = (Vector3)(float3)(shot.To - origin);
                 var line = _pool.Count > 0 ? _pool.Pop() : CreateLine();
                 line.gameObject.SetActive(true);
-                line.SetPosition(0, from);
-                line.SetPosition(1, to);
-                var width = Mathf.Max(0.3f, Vector3.Distance(cameraPosition, (from + to) * 0.5f) * WidthPerMetreOfDistance);
-                line.widthMultiplier = shot.Type == DamageType.Missile ? width * 3f : width;
 
-                var color = shot.Type switch
+                var (color, length, widthFactor) = shot.Type switch
                 {
-                    DamageType.Ion => IonColor,
-                    DamageType.Kinetic => KineticColor,
-                    DamageType.Missile => MissileColor,
-                    _ => shot.Team == Team.Player ? PlayerColor : EnemyColor,
+                    DamageType.Ion => (IonColor, 60f, 1f),
+                    DamageType.Laser => (shot.Team == Team.Player ? PlayerColor : EnemyColor, 60f, 1f),
+                    DamageType.Missile => (MissileColor, 14f, 3f),
+                    _ => (KineticColor, 10f, 2.5f),
                 };
                 if (!shot.Hit)
                     color.a *= MissAlpha;
-                line.startColor = line.endColor = color;
-                _active.Add(new Tracer { Line = line, Age = 0f, Color = color });
+
+                _active.Add(new Projectile
+                {
+                    Line = line,
+                    From = (Vector3)(float3)(shot.From - origin),
+                    To = (Vector3)(float3)(shot.To - origin),
+                    Flight = Mathf.Max(0.05f, shot.FlightSeconds),
+                    Length = length,
+                    WidthFactor = widthFactor,
+                    Hit = shot.Hit,
+                    Color = color,
+                });
             }
             buffer.Clear();
         }
 
+        void Animate(float dt)
+        {
+            var cameraPosition = _camera.transform.position;
+            for (var i = _active.Count - 1; i >= 0; i--)
+            {
+                var p = _active[i];
+                p.Age += dt;
+
+                var end = p.Hit ? p.Flight : p.Flight + MissOvershoot;
+                if (p.Age >= end)
+                {
+                    p.Line.gameObject.SetActive(false);
+                    _pool.Push(p.Line);
+                    _active.RemoveAt(i);
+                    continue;
+                }
+
+                var direction = p.To - p.From;
+                var distance = direction.magnitude;
+                direction = distance > 1e-3f ? direction / distance : Vector3.forward;
+                var travelled = distance * (p.Age / p.Flight);
+                var head = p.From + direction * travelled;
+                var tail = p.From + direction * Mathf.Max(0f, travelled - p.Length);
+
+                p.Line.SetPosition(0, tail);
+                p.Line.SetPosition(1, head);
+                p.Line.widthMultiplier = Mathf.Max(0.3f, Vector3.Distance(cameraPosition, head) * WidthPerMetreOfDistance) * p.WidthFactor;
+
+                var color = p.Color;
+                if (p.Age > p.Flight)
+                    color.a *= 1f - (p.Age - p.Flight) / MissOvershoot;
+                p.Line.startColor = new Color(color.r, color.g, color.b, color.a * 0.2f);
+                p.Line.endColor = color;
+                _active[i] = p;
+            }
+        }
+
         LineRenderer CreateLine()
         {
-            var go = new GameObject("Tracer");
+            var go = new GameObject("Projectile");
             go.transform.SetParent(_root, false);
             var line = go.AddComponent<LineRenderer>();
             line.useWorldSpace = true;

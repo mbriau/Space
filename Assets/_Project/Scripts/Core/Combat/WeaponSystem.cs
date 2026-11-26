@@ -29,7 +29,9 @@ namespace Space.Core.Combat
 
             var queue = state.EntityManager.CreateEntity(typeof(ShotEventQueue));
             state.EntityManager.AddBuffer<ShotEvent>(queue);
-            state.EntityManager.SetName(queue, "ShotEvents");
+            state.EntityManager.AddBuffer<ProjectileInFlight>(queue);
+            state.EntityManager.AddBuffer<ImpactEvent>(queue);
+            state.EntityManager.SetName(queue, "Projectiles");
 
             state.RequireForUpdate<SimulationTime>();
         }
@@ -50,9 +52,10 @@ namespace Space.Core.Combat
                 Positions = _targets.ToComponentDataArray<SimPosition>(state.WorldUpdateAllocator),
                 Velocities = _targets.ToComponentDataArray<ShipVelocity>(state.WorldUpdateAllocator),
                 Radii = _targets.ToComponentDataArray<ShipRadius>(state.WorldUpdateAllocator),
-                Hulls = SystemAPI.GetComponentLookup<Hull>(false),
-                Shields = SystemAPI.GetComponentLookup<Shield>(false),
+                Hulls = SystemAPI.GetComponentLookup<Hull>(true),
+                Shields = SystemAPI.GetComponentLookup<Shield>(true),
                 Shots = SystemAPI.GetSingletonBuffer<ShotEvent>(),
+                InFlight = SystemAPI.GetSingletonBuffer<ProjectileInFlight>(),
             };
             state.Dependency = job.Schedule(state.Dependency);
         }
@@ -70,9 +73,10 @@ namespace Space.Core.Combat
             [ReadOnly] public NativeArray<ShipVelocity> Velocities;
             [ReadOnly] public NativeArray<ShipRadius> Radii;
 
-            public ComponentLookup<Hull> Hulls;
-            public ComponentLookup<Shield> Shields;
+            [ReadOnly] public ComponentLookup<Hull> Hulls;
+            [ReadOnly] public ComponentLookup<Shield> Shields;
             public DynamicBuffer<ShotEvent> Shots;
+            public DynamicBuffer<ProjectileInFlight> InFlight;
 
             void Execute(Entity entity, in SimPosition position, in Team team, in AttackTarget attack,
                          in PowerGrid power, DynamicBuffer<Weapon> weapons)
@@ -157,33 +161,37 @@ namespace Space.Core.Combat
 
                 var random = WeaponMath.ShotRandom(Seed, Tick, shooter.Index, weaponIndex);
                 var hit = random.NextFloat() < probability;
-                var impact = Positions[target].Value;
 
                 if (weapon.Ammo > 0)
                     weapon.Ammo--;
 
-                if (hit)
+                // The projectile flies to where the target will be; the hit is applied on arrival.
+                var flightSeconds = weapon.ProjectileSpeed > 0f ? distance / weapon.ProjectileSpeed : 0f;
+                var flightTicks = (uint)math.max(1f, math.round(flightSeconds * SimulationClockBootstrapSystem.TickRate));
+                var impact = Positions[target].Value + (double3)(Velocities[target].Linear * flightSeconds);
+                if (!hit)
                 {
-                    var targetEntity = Entities[target];
-                    var hull = Hulls[targetEntity];
-                    var shield = Shields.HasComponent(targetEntity) ? Shields[targetEntity] : default;
-                    if (shield.IsUp)
-                        shield.LastHitTick = Tick;
-                    DamageModel.ApplyHit(weapon, ref shield, ref hull, Tick, SimulationClockBootstrapSystem.TickRate);
-                    Hulls[targetEntity] = hull;
-                    if (Shields.HasComponent(targetEntity))
-                        Shields[targetEntity] = shield;
-                }
-                else
-                {
-                    // Show the miss passing beside the target.
+                    // The miss passes beside the target.
                     var direction = distance > 1e-3f ? toTarget / distance : new float3(0f, 0f, 1f);
                     var side = math.normalizesafe(math.cross(direction, math.up()), new float3(1f, 0f, 0f));
                     var lateral = (radius * 1.2f + random.NextFloat(0f, radius * 2f)) * (random.NextBool() ? 1f : -1f);
                     impact += (double3)(side * lateral + direction * random.NextFloat(0f, radius * 3f));
                 }
 
-                Shots.Add(new ShotEvent { From = from, To = impact, Hit = hit, Team = team, Type = weapon.Type });
+                InFlight.Add(new ProjectileInFlight
+                {
+                    Target = Entities[target],
+                    ImpactTick = Tick + flightTicks,
+                    Hit = hit,
+                    Type = weapon.Type,
+                    Damage = weapon.Damage,
+                    ShieldDamage = weapon.ShieldDamage,
+                });
+                Shots.Add(new ShotEvent
+                {
+                    From = from, To = impact, FlightSeconds = flightTicks / SimulationClockBootstrapSystem.TickRate,
+                    Hit = hit, Team = team, Type = weapon.Type,
+                });
                 weapon.CooldownLeft = weapon.Cooldown * WeaponMath.CooldownFactor(weapon.Mode);
             }
         }

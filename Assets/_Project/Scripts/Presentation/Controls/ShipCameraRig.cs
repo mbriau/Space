@@ -72,7 +72,28 @@ namespace Space.Presentation.Controls
 
             Distance = Mathf.Lerp(Distance, _targetDistance, 1f - Mathf.Exp(-ZoomSharpness * Time.unscaledDeltaTime));
             var rotation = Quaternion.Euler(Pitch, Yaw, 0f);
-            transform.SetPositionAndRotation(_focus - rotation * Vector3.forward * Distance, rotation);
+            transform.SetPositionAndRotation(_focus - rotation * Vector3.forward * Distance + ShakeOffset(), rotation);
+        }
+
+        float _shake;
+
+        /// <summary>Shakes the camera; the amplitude (metres, scaled with the zoom) decays quickly.</summary>
+        public void Shake(float amplitude)
+        {
+            _shake = Mathf.Min(MaxShake, Mathf.Max(_shake, amplitude));
+        }
+
+        [Tooltip("Largest camera shake, in metres at 100 m of zoom.")]
+        public float MaxShake = 3f;
+
+        Vector3 ShakeOffset()
+        {
+            if (_shake <= 0.01f)
+                return Vector3.zero;
+            _shake *= Mathf.Exp(-6f * Time.unscaledDeltaTime);
+            var scale = _shake * Distance / 100f;
+            var t = Time.unscaledTime * 40f;
+            return new Vector3(Mathf.PerlinNoise(t, 0f) - 0.5f, Mathf.PerlinNoise(0f, t) - 0.5f, Mathf.PerlinNoise(t, t) - 0.5f) * 2f * scale;
         }
 
         /// <summary>

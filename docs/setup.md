@@ -73,11 +73,15 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
   « brisé » quelques secondes avant de pouvoir se recharger. Laser (énergie) : bouclier + coque ;
   ionique : bouclier seulement ; canon (physique, munitions limitées) : coque ; missiles : bouclier puis
   gros dégâts, sur cible imposée. Chaque arme préfère les cibles qu'elle abîme le plus.
+- Rythme « bataille navale » : peu de tirs, lourds ; les projectiles volent réellement (obus lents
+  ~350 m/s, traits d'énergie ~1 500 m/s), le tir est décidé au départ et appliqué à l'arrivée
+  (`ProjectileInFlight`, `ImpactSystem`). Chaque impact produit une explosion proportionnelle aux dégâts
+  (orange sur la coque, bleue sur le bouclier) et secoue la caméra quand un vaisseau du joueur est touché.
 - L'IA ennemie répartit aussi sa puissance : bouclier + énergie tant que le bouclier adverse tient,
   puis armes physiques et tout sur le bouclier quand il est brisé.
 - Premier niveau « Premier contact » : le Cargo seul contre un Raider (un peu plus petit, presque aussi
-  rapide) qui sort d'hyperespace à 650 m. Joueur passif : défaite en 2 min environ ; avec la stratégie
-  ci-dessus : victoire en 1 min 30 environ.
+  rapide) qui sort d'hyperespace à 650 m. Joueur passif : défaite en 2 min de combat environ ; avec la
+  stratégie ci-dessus : victoire en 1 min à 1 min 30 environ.
   Règles dans `DamageModel`, testées en EditMode.
 - Les drones tiennent leur place dans la formation du vaisseau principal quand ils n'ont pas d'ordre.
 

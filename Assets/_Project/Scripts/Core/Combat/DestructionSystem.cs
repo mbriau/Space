@@ -6,7 +6,7 @@ namespace Space.Core.Combat
 {
     /// <summary>Destroys ships whose hull reached zero (with their child entities, through LinkedEntityGroup).</summary>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-    [UpdateAfter(typeof(WeaponSystem))]
+    [UpdateAfter(typeof(ImpactSystem))]
     [BurstCompile]
     public partial struct DestructionSystem : ISystem
     {

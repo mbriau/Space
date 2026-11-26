@@ -102,7 +102,12 @@ namespace Space.Presentation.Game
                     if (em.Exists(ship))
                         em.DestroyEntity(ship);
             if (!_shotsQuery.IsEmpty)
-                em.GetBuffer<ShotEvent>(_shotsQuery.GetSingletonEntity()).Clear();
+            {
+                var queue = _shotsQuery.GetSingletonEntity();
+                em.GetBuffer<ShotEvent>(queue).Clear();
+                em.GetBuffer<ProjectileInFlight>(queue).Clear();
+                em.GetBuffer<ImpactEvent>(queue).Clear();
+            }
 
             var levelEntity = _levelQuery.IsEmpty ? CreateLevelEntity(em) : _levelQuery.GetSingletonEntity();
             var tick = _timeQuery.GetSingleton<SimulationTime>().Tick;

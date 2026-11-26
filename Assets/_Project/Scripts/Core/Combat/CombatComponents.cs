@@ -199,15 +199,46 @@ namespace Space.Core.Combat
 
     /// <summary>
     /// One shot fired during the last simulation ticks, kept in a singleton buffer for presentation
-    /// (tracers). Presentation clears the buffer once it has drawn the shots.
+    /// (projectiles in flight). Presentation clears the buffer once it has read the shots.
     /// </summary>
     public struct ShotEvent : IBufferElementData
     {
         public double3 From;
+
+        /// <summary>Where the projectile ends its flight (the target's predicted position, or beside it for a miss).</summary>
         public double3 To;
+
+        /// <summary>Simulated seconds of flight.</summary>
+        public float FlightSeconds;
         public bool Hit;
         public byte Team;
         public DamageType Type;
+    }
+
+    /// <summary>
+    /// A projectile on its way. The hit is decided when it is fired (deterministic draw) and applied
+    /// when it arrives, at <see cref="ImpactTick"/>.
+    /// </summary>
+    public struct ProjectileInFlight : IBufferElementData
+    {
+        public Entity Target;
+        public uint ImpactTick;
+        public bool Hit;
+        public DamageType Type;
+        public float Damage;
+        public float ShieldDamage;
+    }
+
+    /// <summary>An impact this tick, for presentation (explosion size, shield flash, camera shake).</summary>
+    public struct ImpactEvent : IBufferElementData
+    {
+        public double3 Position;
+        public DamageType Type;
+        public float HullDamage;
+        public float ShieldDamage;
+        public bool ShieldWasUp;
+        public byte TargetTeam;
+        public float TargetRadius;
     }
 
     /// <summary>Tag on the singleton entity holding the <see cref="ShotEvent"/> buffer.</summary>

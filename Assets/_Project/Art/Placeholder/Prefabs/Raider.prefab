@@ -361,11 +361,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: deb25047b4e8a8a46a43da80987feeac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Space.Authoring::Space.Authoring.ShipAuthoring
-  MaxSpeed: 62
-  Acceleration: 6
-  TurnRateDegrees: 32
+  MaxSpeed: 47
+  Acceleration: 3.2
+  TurnRateDegrees: 16
   Team: 1
-  Hull: 300
+  Hull: 320
   Power:
     Reactor: 7
     ShieldCapacity: 4
@@ -378,26 +378,26 @@ MonoBehaviour:
     Engines: 1
   ShieldMax: 120
   ShieldRechargePerPower: 1.5
-  ShieldRebootSeconds: 6
+  ShieldRebootSeconds: 10
   Weapons:
   - Type: 1
-    Range: 430
-    Damage: 5
-    ShieldDamage: 25
+    Range: 480
+    Damage: 10
+    ShieldDamage: 48
     Ammo: -1
     OrderedTargetOnly: 0
-    CooldownSeconds: 2.5
-    ProjectileSpeed: 3000
+    CooldownSeconds: 6.5
+    ProjectileSpeed: 1500
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
-    Range: 380
-    Damage: 35
+    Range: 430
+    Damage: 70
     ShieldDamage: 0
-    Ammo: 10
+    Ammo: 7
     OrderedTargetOnly: 0
-    CooldownSeconds: 3.5
-    ProjectileSpeed: 1200
+    CooldownSeconds: 5.5
+    ProjectileSpeed: 350
     SpreadDegrees: 0.5
     Mode: 0
 --- !u!1 &8820515967938416669

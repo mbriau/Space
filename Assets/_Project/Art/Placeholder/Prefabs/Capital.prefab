@@ -397,7 +397,7 @@ MonoBehaviour:
     Ammo: -1
     OrderedTargetOnly: 0
     CooldownSeconds: 2.5
-    ProjectileSpeed: 3000
+    ProjectileSpeed: 1500
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
@@ -407,7 +407,7 @@ MonoBehaviour:
     Ammo: 40
     OrderedTargetOnly: 0
     CooldownSeconds: 3
-    ProjectileSpeed: 1200
+    ProjectileSpeed: 350
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 0
@@ -427,7 +427,7 @@ MonoBehaviour:
     Ammo: -1
     OrderedTargetOnly: 0
     CooldownSeconds: 2.5
-    ProjectileSpeed: 3000
+    ProjectileSpeed: 1500
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
@@ -437,7 +437,7 @@ MonoBehaviour:
     Ammo: 40
     OrderedTargetOnly: 0
     CooldownSeconds: 3
-    ProjectileSpeed: 1200
+    ProjectileSpeed: 350
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 3

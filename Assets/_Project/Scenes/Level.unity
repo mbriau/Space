@@ -234,6 +234,7 @@ GameObject:
   - component: {fileID: 1455411570}
   - component: {fileID: 1455411569}
   - component: {fileID: 1455411577}
+  - component: {fileID: 1455411578}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -275,9 +276,8 @@ MonoBehaviour:
   KineticColor: {r: 1, g: 0.9, b: 0.55, a: 1}
   MissileColor: {r: 1, g: 0.6, b: 0.15, a: 1}
   MissAlpha: 0.35
-  Lifetime: 0.15
   WidthPerMetreOfDistance: 0.002
-  MaxTracers: 128
+  MaxProjectiles: 128
 --- !u!114 &1455411571
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,6 +324,7 @@ MonoBehaviour:
   TransitionDuration: 0.5
   SizeInfluence: 0.25
   MaxAutoZoomFactor: 1.4
+  MaxShake: 3
 --- !u!114 &1455411573
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -466,6 +467,24 @@ MonoBehaviour:
   StreakLength: 1500
   RingRadiusInShipRadii: 6
   WidthPerMetreOfDistance: 0.008
+--- !u!114 &1455411578
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1455411568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 353bf198b019bd44a8720cc9cae58e9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Rendering.ImpactEffects
+  Material: {fileID: 2100000, guid: c1b1900b085716f45adc7b39ddb4b2ff, type: 2}
+  HullColor: {r: 1, g: 0.55, b: 0.15, a: 1}
+  ShieldColor: {r: 0.45, g: 0.7, b: 1, a: 1}
+  Duration: 0.8
+  ShakePerDamage: 0.05
+  WidthPerMetreOfDistance: 0.004
 --- !u!1 &1679563676
 GameObject:
   m_ObjectHideFlags: 0

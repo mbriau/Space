@@ -102,7 +102,7 @@ MonoBehaviour:
     Ammo: -1
     OrderedTargetOnly: 0
     CooldownSeconds: 1.2
-    ProjectileSpeed: 1200
+    ProjectileSpeed: 350
     SpreadDegrees: 0.5
     Mode: 0
 --- !u!1 &2065682464045045708

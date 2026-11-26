@@ -42,12 +42,12 @@ namespace Space.Editor.Placeholders
         {
             // Sizes are compressed for readability on a single plane: the largest ship is 150 m long.
             new("Drone",         6f,   1.8f, 0.9f, 2.0f,  1_500, 1, new Color(0.60f, 0.80f, 0.90f), 120f, 40f, 180f),
-            new("Cargo",        40f,  10f,   8f,   4.0f, 12_000, 2, new Color(0.85f, 0.70f, 0.30f),  60f,  6f,  30f),
+            new("Cargo",        40f,  10f,   8f,   4.0f, 12_000, 2, new Color(0.85f, 0.70f, 0.30f),  45f,  3f,  15f),
             new("PirateFighter",14f,   7f,   2.3f, 2.2f,  4_000, 2, new Color(0.80f, 0.25f, 0.20f), 140f, 35f, 120f),
             new("Corvette",     28f,   5.6f, 3.7f, 2.5f, 10_000, 2, new Color(0.40f, 0.60f, 0.40f), 100f, 18f,  70f),
             new("Frigate",      64f,  11f,   8f,   3.0f, 25_000, 3, new Color(0.50f, 0.55f, 0.70f),  70f,  8f,  35f),
             new("Capital",     150f,  25f,  17.5f, 3.5f, 80_000, 6, new Color(0.55f, 0.55f, 0.60f),  35f,  2f,  10f),
-            new("Raider",       32f,   8f,   6f,   3.0f,  9_000, 2, new Color(0.60f, 0.20f, 0.25f),  62f,  6f,  32f),
+            new("Raider",       32f,   8f,   6f,   3.0f,  9_000, 2, new Color(0.60f, 0.20f, 0.25f),  47f,  3.2f, 16f),
         };
 
         /// <summary>Share of the triangle budget kept by each LOD, and the screen height at which it switches.</summary>
@@ -178,7 +178,7 @@ namespace Space.Editor.Placeholders
             ShipAuthoring.WeaponSpec Laser(float range, float shieldDamage, float hullDamage, float cooldown) => new()
             {
                 Type = DamageType.Laser, Range = range, ShieldDamage = shieldDamage, Damage = hullDamage,
-                CooldownSeconds = cooldown, SpreadDegrees = 0.4f, ProjectileSpeed = 3000f,
+                CooldownSeconds = cooldown, SpreadDegrees = 0.4f, ProjectileSpeed = 1500f,
             };
             ShipAuthoring.WeaponSpec Ion(float range, float shieldDamage, float cooldown) => new()
             {
@@ -188,7 +188,7 @@ namespace Space.Editor.Placeholders
             ShipAuthoring.WeaponSpec Cannon(float range, float damage, float cooldown, int ammo = -1) => new()
             {
                 Type = DamageType.Kinetic, Range = range, Damage = damage, Ammo = ammo,
-                CooldownSeconds = cooldown, SpreadDegrees = 0.5f, ProjectileSpeed = 1200f,
+                CooldownSeconds = cooldown, SpreadDegrees = 0.5f, ProjectileSpeed = 350f,
             };
             ShipAuthoring.WeaponSpec Missiles(int count, float damage, float shieldDamage) => new()
             {
@@ -228,19 +228,19 @@ namespace Space.Editor.Placeholders
                     // The player's first ship: shield, an energy weapon that also damages the hull, and
                     // a cannon with limited ammunition. Reactor 8: shield 3, energy weapon 3, engines 2.
                     ship.Hull = 450f;
-                    ShieldStats(150f, 1.5f);
+                    ShieldStats(150f, 1.5f, reboot: 10f);
                     Power(8, 4, 3, 2, 3, 3, 3, 0, 2);
-                    ship.Weapons.Add(Laser(450f, 30f, 6f, 2.5f));
-                    ship.Weapons.Add(Cannon(400f, 40f, 3f, ammo: 12));
+                    ship.Weapons.Add(Laser(500f, 55f, 12f, 6f));
+                    ship.Weapons.Add(Cannon(450f, 85f, 5f, ammo: 8));
                     break;
                 case "Raider":
                     // Pirate raider, a little smaller than the Cargo and about as fast: the same toolkit.
                     ship.Team = ShipAuthoring.TeamId.Pirates;
-                    ship.Hull = 300f;
-                    ShieldStats(120f, 1.5f);
+                    ship.Hull = 320f;
+                    ShieldStats(120f, 1.5f, reboot: 10f);
                     Power(7, 4, 3, 1, 3, 3, 3, 0, 1);
-                    ship.Weapons.Add(Laser(430f, 25f, 5f, 2.5f));
-                    ship.Weapons.Add(Cannon(380f, 35f, 3.5f, ammo: 10));
+                    ship.Weapons.Add(Laser(480f, 48f, 10f, 6.5f));
+                    ship.Weapons.Add(Cannon(430f, 70f, 5.5f, ammo: 7));
                     break;
                 case "PirateFighter":
                     ship.Team = ShipAuthoring.TeamId.Pirates;
