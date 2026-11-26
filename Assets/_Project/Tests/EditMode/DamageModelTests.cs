@@ -37,18 +37,28 @@ namespace Space.Core.Tests
 
         [TestCase(DamageType.Laser)]
         [TestCase(DamageType.Kinetic)]
-        public void PhysicalDamageIsFullyBlockedByARaisedShield(DamageType type)
+        public void AFullShieldStopsMostPhysicalDamage(DamageType type)
         {
-            var shield = RaisedShield();
+            var shield = RaisedShield(100f);
             var hull = FullHull();
-            DamageModel.ApplyHit(Make(type), ref shield, ref hull);
-            Assert.AreEqual(50f, shield.Current);
-            Assert.AreEqual(100f, hull.Current);
+            DamageModel.ApplyHit(Make(type, damage: 100f), ref shield, ref hull);
+            Assert.AreEqual(100f, shield.Current, "physical damage does not drain the shield");
+            Assert.AreEqual(90f, hull.Current, 1e-4f, "10 % gets through a full shield");
         }
 
         [TestCase(DamageType.Laser)]
         [TestCase(DamageType.Kinetic)]
-        public void PhysicalDamageHitsTheHullOnceTheShieldIsDown(DamageType type)
+        public void AWeakerShieldLetsMoreThrough(DamageType type)
+        {
+            var shield = RaisedShield(50f);
+            var hull = FullHull();
+            DamageModel.ApplyHit(Make(type, damage: 100f), ref shield, ref hull);
+            Assert.AreEqual(45f, hull.Current, 1e-4f, "55 % gets through a half shield");
+        }
+
+        [TestCase(DamageType.Laser)]
+        [TestCase(DamageType.Kinetic)]
+        public void PhysicalDamageHitsTheHullFullyOnceTheShieldIsDown(DamageType type)
         {
             var shield = RaisedShield(0f);
             var hull = FullHull();
@@ -57,33 +67,36 @@ namespace Space.Core.Tests
         }
 
         [Test]
-        public void MissileBreaksAWeakShieldAndHitsTheHull()
+        public void MissileBreaksAWeakShieldThenHitsTheHullFully()
         {
             var shield = RaisedShield(30f);
             var hull = FullHull();
             DamageModel.ApplyHit(Make(DamageType.Missile, damage: 60f, shieldDamage: 40f), ref shield, ref hull);
             Assert.AreEqual(0f, shield.Current);
-            Assert.AreEqual(40f, hull.Current);
+            Assert.AreEqual(40f, hull.Current, 1e-4f);
         }
 
         [Test]
-        public void MissileOnlyDisruptsAStrongShield()
+        public void MissileHitsTheShieldFirstThenThePhysicalDamageIsMitigated()
         {
             var shield = RaisedShield(80f);
             var hull = FullHull();
             DamageModel.ApplyHit(Make(DamageType.Missile, damage: 60f, shieldDamage: 40f), ref shield, ref hull);
             Assert.AreEqual(40f, shield.Current);
-            Assert.AreEqual(100f, hull.Current);
+            // Shield left at 40 % stops 36 % of the warhead: 60 × 0.64 = 38.4.
+            Assert.AreEqual(100f - 38.4f, hull.Current, 1e-3f);
         }
 
         [Test]
-        public void WeaponsOnlyAimAtWhatTheyCanDamage()
+        public void WeaponsPreferWhatTheyHurtMost()
         {
-            Assert.IsTrue(DamageModel.IsUseful(DamageType.Ion, targetShieldUp: true));
-            Assert.IsFalse(DamageModel.IsUseful(DamageType.Ion, targetShieldUp: false));
-            Assert.IsFalse(DamageModel.IsUseful(DamageType.Laser, targetShieldUp: true));
-            Assert.IsTrue(DamageModel.IsUseful(DamageType.Kinetic, targetShieldUp: false));
-            Assert.IsTrue(DamageModel.IsUseful(DamageType.Missile, targetShieldUp: true));
+            var raised = RaisedShield(100f);
+            var down = default(Shield);
+            Assert.AreEqual(1f, DamageModel.Effectiveness(DamageType.Ion, raised));
+            Assert.AreEqual(0f, DamageModel.Effectiveness(DamageType.Ion, down));
+            Assert.Less(DamageModel.Effectiveness(DamageType.Laser, raised), DamageModel.Effectiveness(DamageType.Laser, down));
+            Assert.Greater(DamageModel.Effectiveness(DamageType.Kinetic, raised), 0f, "physical weapons still hurt shielded ships a little");
+            Assert.AreEqual(1f, DamageModel.Effectiveness(DamageType.Missile, raised));
         }
 
         [Test]

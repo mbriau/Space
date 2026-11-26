@@ -67,8 +67,10 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
 - Énergie et boucliers : le réacteur se recharge en continu ; le bouclier consomme de l'énergie pour rester
   en ligne et pour se recharger (touche B pour le couper et libérer l'énergie). Types d'armes :
   ionique (énergie, ne vide que les boucliers), laser (énergie, dégâts à la coque), canon (sans énergie,
-  dégâts à la coque) — laser et canon sont entièrement bloqués par un bouclier actif — et missiles
-  (munitions limitées, gros dégâts, perturbent le bouclier ; tirés seulement sur une cible imposée).
+  dégâts à la coque) — un bouclier actif atténue les dégâts physiques selon sa charge (jusqu'à 90 % à
+  pleine charge) sans être vidé par eux — et missiles (munitions limitées : d'abord le bouclier, puis
+  de gros dégâts physiques atténués par ce qu'il en reste ; tirés seulement sur une cible imposée).
+  Chaque arme préfère les cibles qu'elle abîme le plus, puis les plus proches.
   Règles dans `DamageModel`, testées en EditMode.
 - Les drones tiennent leur place dans la formation du vaisseau principal quand ils n'ont pas d'ordre.
 

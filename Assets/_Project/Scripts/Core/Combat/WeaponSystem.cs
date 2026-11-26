@@ -97,18 +97,19 @@ namespace Space.Core.Combat
                 }
             }
 
-            bool ShieldUp(Entity target) => Shields.HasComponent(target) && Shields[target].IsUp;
+            float Effectiveness(in Weapon weapon, Entity target) =>
+                DamageModel.Effectiveness(weapon.Type, Shields.HasComponent(target) ? Shields[target] : default);
 
             /// <summary>
-            /// Index of the target in the arrays, or -1. Each weapon only considers targets it can
-            /// damage right now (ion against raised shields, laser and cannon against bare hulls);
-            /// the ordered target wins when it qualifies.
+            /// Index of the target in the arrays, or -1. Each weapon prefers targets it hurts most
+            /// (ion against raised shields, laser and cannon against weak or downed shields), then the
+            /// closest; it ignores targets it cannot hurt. The ordered target wins when it qualifies.
             /// </summary>
             int ChooseTarget(double3 from, byte team, Entity ordered, in Weapon weapon)
             {
                 var rangeSq = (double)weapon.Range * weapon.Range;
                 var best = -1;
-                var bestDistanceSq = rangeSq;
+                var bestScore = double.MaxValue;
                 for (var i = 0; i < Entities.Length; i++)
                 {
                     var candidate = Entities[i];
@@ -118,15 +119,21 @@ namespace Space.Core.Combat
                         continue;
 
                     var distanceSq = math.distancesq(from, Positions[i].Value);
-                    if (distanceSq > rangeSq || !DamageModel.IsUseful(weapon.Type, ShieldUp(candidate)))
+                    if (distanceSq > rangeSq)
+                        continue;
+
+                    var effectiveness = Effectiveness(weapon, candidate);
+                    if (effectiveness <= 0f)
                         continue;
 
                     if (candidate == ordered)
                         return i;
 
-                    if (distanceSq < bestDistanceSq)
+                    // A target twice as well protected counts as twice as far.
+                    var score = math.sqrt(distanceSq) / effectiveness;
+                    if (score < bestScore)
                     {
-                        bestDistanceSq = distanceSq;
+                        bestScore = score;
                         best = i;
                     }
                 }

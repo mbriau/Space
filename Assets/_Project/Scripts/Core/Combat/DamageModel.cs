@@ -8,40 +8,53 @@ namespace Space.Core.Combat
     /// </summary>
     public static class DamageModel
     {
+        /// <summary>Share of physical damage a full shield stops. The rest always reaches the hull.</summary>
+        public const float MaxShieldMitigation = 0.9f;
+
+        /// <summary>
+        /// Share of physical damage that reaches the hull: the stronger the shield (charge relative to
+        /// its capacity), the less gets through. A downed shield lets everything through.
+        /// </summary>
+        public static float HullDamageFactor(in Shield shield)
+        {
+            if (!shield.IsUp || shield.Max <= 0f)
+                return 1f;
+            return 1f - MaxShieldMitigation * math.saturate(shield.Current / shield.Max);
+        }
+
         /// <summary>Applies one hit of <paramref name="weapon"/> to a target.</summary>
         public static void ApplyHit(in Weapon weapon, ref Shield shield, ref Hull hull)
         {
-            var shieldUp = shield.IsUp;
             switch (weapon.Type)
             {
                 case DamageType.Ion:
-                    if (shieldUp)
+                    if (shield.IsUp)
                         shield.Current = math.max(0f, shield.Current - weapon.ShieldDamage);
                     break;
 
                 case DamageType.Laser:
                 case DamageType.Kinetic:
-                    if (!shieldUp)
-                        hull.Current = math.max(0f, hull.Current - weapon.Damage);
+                    hull.Current = math.max(0f, hull.Current - weapon.Damage * HullDamageFactor(shield));
                     break;
 
                 case DamageType.Missile:
-                    // Disrupts the shield first; the warhead reaches the hull once the shield is down.
-                    if (shieldUp)
+                    // Shield first, then the physical warhead, mitigated by what is left of the shield.
+                    if (shield.IsUp)
                         shield.Current = math.max(0f, shield.Current - weapon.ShieldDamage);
-                    if (!shield.IsUp)
-                        hull.Current = math.max(0f, hull.Current - weapon.Damage);
+                    hull.Current = math.max(0f, hull.Current - weapon.Damage * HullDamageFactor(shield));
                     break;
             }
         }
 
-        /// <summary>Whether a weapon can do anything against a target in its current state.</summary>
-        public static bool IsUseful(DamageType type, bool targetShieldUp) => type switch
+        /// <summary>
+        /// How much of its damage a weapon would deal to a target right now, from 0 (useless) to 1.
+        /// Weapons prefer targets where they are most effective.
+        /// </summary>
+        public static float Effectiveness(DamageType type, in Shield targetShield) => type switch
         {
-            DamageType.Ion => targetShieldUp,
-            DamageType.Laser => !targetShieldUp,
-            DamageType.Kinetic => !targetShieldUp,
-            _ => true,
+            DamageType.Ion => targetShield.IsUp ? 1f : 0f,
+            DamageType.Missile => 1f,
+            _ => HullDamageFactor(targetShield),
         };
 
         /// <summary>
