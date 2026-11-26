@@ -6,11 +6,15 @@ namespace Space.Core.Orders
     public enum ShipCommandType : byte
     {
         None = 0,
+
+        /// <summary>Fly to <see cref="ShipCommand.Point"/> and stop there.</summary>
         MoveTo = 1,
+
+        /// <summary>Dock at a space base (upgrades, drones). Not implemented yet.</summary>
         Dock = 2,
+
+        /// <summary>Leave the base the ship is docked at. Not implemented yet.</summary>
         Undock = 3,
-        Load = 4,
-        Unload = 5,
     }
 
     /// <summary>
@@ -28,7 +32,7 @@ namespace Space.Core.Orders
         /// <summary>Target point in simulation space, used when Target is null.</summary>
         public double3 Point;
 
-        /// <summary>Generic payload (quantity, cargo type id...), meaning depends on Type.</summary>
+        /// <summary>Generic payload, meaning depends on Type.</summary>
         public int Argument;
 
         /// <summary>Simulation tick at which the order was issued (needed for networking and replays).</summary>

@@ -1,0 +1,87 @@
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Space.Presentation.Controls
+{
+    /// <summary>
+    /// Third-person orbit camera around the selected ship (M1, US1).
+    /// Middle mouse drag (or Alt + left drag) orbits, the wheel zooms from 20 m to 2 km.
+    /// Ship positions are already relative to the floating origin, so the camera stays precise
+    /// however far the ship travels.
+    /// </summary>
+    [RequireComponent(typeof(Camera))]
+    [RequireComponent(typeof(PlayerControls))]
+    public class ShipCameraRig : MonoBehaviour
+    {
+        [Min(1f)] public float MinDistance = 20f;
+        [Min(1f)] public float MaxDistance = 2000f;
+        public float Distance = 150f;
+        public float Yaw = 30f;
+        [Range(-89f, 89f)] public float Pitch = 25f;
+
+        [Tooltip("Degrees per pixel of mouse movement.")]
+        public float OrbitSpeed = 0.25f;
+
+        [Tooltip("Zoom factor per wheel notch.")]
+        [Min(1.01f)] public float ZoomStep = 1.15f;
+
+        [Tooltip("How quickly the zoom reaches its target (higher is snappier).")]
+        public float ZoomSharpness = 12f;
+
+        PlayerControls _controls;
+        Vector3 _focus;
+        float _targetDistance;
+        Entity _framedEntity;
+
+        void Awake()
+        {
+            _controls = GetComponent<PlayerControls>();
+            _targetDistance = Distance;
+        }
+
+        void LateUpdate()
+        {
+            if (_controls.TryGetSelection(out var selection))
+            {
+                _focus = selection.RenderPosition;
+
+                // Frame a newly selected ship according to its size.
+                if (selection.Entity != _framedEntity)
+                {
+                    _framedEntity = selection.Entity;
+                    _targetDistance = Mathf.Clamp(selection.Radius * 4f, MinDistance, MaxDistance);
+                }
+            }
+
+            ReadInput();
+
+            Distance = Mathf.Lerp(Distance, _targetDistance, 1f - Mathf.Exp(-ZoomSharpness * Time.unscaledDeltaTime));
+            var rotation = Quaternion.Euler(Pitch, Yaw, 0f);
+            transform.SetPositionAndRotation(_focus - rotation * Vector3.forward * Distance, rotation);
+        }
+
+        void ReadInput()
+        {
+            var mouse = Mouse.current;
+            if (mouse == null)
+                return;
+
+            var keyboard = Keyboard.current;
+            var altHeld = keyboard != null && keyboard.altKey.isPressed;
+            if (mouse.middleButton.isPressed || (altHeld && mouse.leftButton.isPressed))
+            {
+                var delta = mouse.delta.ReadValue();
+                Yaw += delta.x * OrbitSpeed;
+                Pitch = Mathf.Clamp(Pitch - delta.y * OrbitSpeed, -89f, 89f);
+            }
+
+            var scroll = mouse.scroll.ReadValue().y;
+            if (scroll > 0f)
+                _targetDistance /= ZoomStep;
+            else if (scroll < 0f)
+                _targetDistance *= ZoomStep;
+            _targetDistance = Mathf.Clamp(_targetDistance, MinDistance, MaxDistance);
+        }
+    }
+}

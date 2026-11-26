@@ -227,6 +227,9 @@ GameObject:
   - component: {fileID: 1853027383}
   - component: {fileID: 1853027382}
   - component: {fileID: 1853027381}
+  - component: {fileID: 1853027386}
+  - component: {fileID: 1853027385}
+  - component: {fileID: 1853027384}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -344,6 +347,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1853027384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1853027380}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f25bb3b98fb6164ead3227dde9f2e86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.UI.DebugHud
+  Controls: {fileID: 1853027386}
+  MarkerColor: {r: 0.3, g: 1, b: 0.5, a: 0.9}
+  DestinationColor: {r: 1, g: 0.85, b: 0.2, a: 0.9}
+--- !u!114 &1853027385
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1853027380}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47e7c9ca78c0aad488ce0def452de67a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Controls.ShipCameraRig
+  MinDistance: 20
+  MaxDistance: 2000
+  Distance: 150
+  Yaw: 30
+  Pitch: 25
+  OrbitSpeed: 0.25
+  ZoomStep: 1.15
+  ZoomSharpness: 12
+--- !u!114 &1853027386
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1853027380}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d82e444b24a876b4686858e21c6a3154, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Controls.PlayerControls
+  InitialSelection: Cargo
+  MinPickRadiusPixels: 18
 --- !u!1 &2035735735
 GameObject:
   m_ObjectHideFlags: 0

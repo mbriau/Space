@@ -1,5 +1,6 @@
 using Space.Core.Orders;
 using Space.Core.Ships;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -23,7 +24,13 @@ namespace Space.Authoring
                 var position = new double3(t.position.x, t.position.y, t.position.z);
                 quaternion rotation = t.rotation;
 
+                // LODGroup.size is the largest dimension of the ship's bounds.
+                var lodGroup = GetComponent<LODGroup>();
+                var radius = lodGroup != null ? lodGroup.size * 0.5f : 1f;
+
                 AddComponent<Ship>(entity);
+                AddComponent(entity, new ShipName { Value = new FixedString64Bytes(authoring.name) });
+                AddComponent(entity, new ShipRadius { Value = radius });
                 AddComponent(entity, new SimPosition { Value = position });
                 AddComponent(entity, new SimPreviousPosition { Value = position });
                 AddComponent(entity, new SimRotation { Value = rotation });

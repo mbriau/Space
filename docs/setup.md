@@ -27,7 +27,14 @@ Assets/_Project/
 
 - La simulation tourne dans `FixedStepSimulationSystemGroup` à 20 Hz, pilotée par `ScaledFixedRateManager`.
 - Le singleton `SimulationTime` porte la pause, la vitesse, le numéro de tick et le facteur d'interpolation.
-- Contrôles temporaires : Espace = pause, 1 / 2 / 3 = vitesse x1 / x2 / x4.
+- Clavier : Espace = pause, 1 / 2 / 3 = vitesse x1 / x2 / x4.
+- Souris (M1) : clic gauche = sélectionner un vaisseau ; clic droit = ordre de déplacement sur le plan
+  horizontal du vaisseau (Maj + clic droit = ajouter à la file) ; molette = zoom de 20 m à 2 km ;
+  bouton du milieu ou Alt + clic gauche = orbite.
+- `ShipMovementSystem` exécute la tête de la file `ShipCommand` à chaque tick ; la logique de pilotage
+  (`ShipSteering`) est pure et testée en EditMode.
+- Sur la caméra de la scène : `PlayerControls` (sélection, ordres), `ShipCameraRig` (caméra 3e personne)
+  et `DebugHud` (HUD provisoire en IMGUI, à remplacer par UI Toolkit).
 - Les positions de simulation sont en `double3` (`SimPosition`). `SimToRenderTransformSystem` interpole
   entre les deux derniers ticks et écrit `LocalTransform` relatif à `FloatingOrigin`.
 - Mettre `FloatingOriginAnchor` sur le vaisseau suivi par la caméra.

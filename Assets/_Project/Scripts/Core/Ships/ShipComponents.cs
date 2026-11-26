@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -5,6 +6,18 @@ namespace Space.Core.Ships
 {
     /// <summary>Marks an entity as a ship (player, drone, NPC or enemy).</summary>
     public struct Ship : IComponentData { }
+
+    /// <summary>Display name of the ship.</summary>
+    public struct ShipName : IComponentData
+    {
+        public FixedString64Bytes Value;
+    }
+
+    /// <summary>Radius of a sphere enclosing the ship, in metres (picking, avoidance, arrival).</summary>
+    public struct ShipRadius : IComponentData
+    {
+        public float Value;
+    }
 
     /// <summary>
     /// Authoritative position in the simulation, in double precision (metres, world space).
