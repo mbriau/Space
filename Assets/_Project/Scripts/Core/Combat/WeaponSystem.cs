@@ -189,6 +189,8 @@ namespace Space.Core.Combat
                 });
                 Shots.Add(new ShotEvent
                 {
+                    Shooter = shooter,
+                    WeaponIndex = (byte)math.min(weaponIndex, 255),
                     From = from, To = impact, FlightSeconds = flightTicks / SimulationClockBootstrapSystem.TickRate,
                     Hit = hit, Team = team, Type = weapon.Type,
                 });

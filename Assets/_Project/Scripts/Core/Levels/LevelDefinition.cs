@@ -21,6 +21,10 @@ namespace Space.Core.Levels
         [Min(1f)] public float SurviveSeconds = 60f;
         public bool WinWhenEnemiesDestroyed = true;
 
+        [Header("Combat tactique")]
+        [Tooltip("Speed of the fixed course the flagship keeps (m/s). Enemies sail alongside at the same speed.")]
+        [Min(1f)] public float CruiseSpeed = 15f;
+
         [Header("Vaisseaux du joueur")]
         public string Flagship = "Cargo";
         public EscortSpawn[] Escorts = Array.Empty<EscortSpawn>();
@@ -49,10 +53,10 @@ namespace Space.Core.Levels
             public string Ship;
             [Min(0f)] public float DelaySeconds;
 
-            [Tooltip("Distance from the player's starting point, in metres.")]
+            [Tooltip("Distance abeam of the flagship at which the enemy sails, in metres.")]
             [Min(0f)] public float Distance;
 
-            [Tooltip("Direction from the starting point, in degrees (0 = ahead, 90 = right).")]
+            [Tooltip("Side it comes from: positive = starboard (right), negative = port (left).")]
             public float AngleDegrees;
         }
     }

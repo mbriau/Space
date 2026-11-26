@@ -142,7 +142,8 @@ namespace Space.Presentation.Controls
                 var picked = Pick(em, pointer);
                 if (picked != Entity.Null && IsEnemyOf(em, picked, ship))
                     em.SetComponentData(ship, new AttackTarget { Value = picked });
-                else
+                // Tactical combat: ships on a fixed course or keeping station take no move orders.
+                else if (!em.HasComponent<CruiseCourse>(ship) && !em.HasComponent<FormationSlot>(ship))
                     IssueMoveOrder(em, ship, pointer, keyboard != null && keyboard.shiftKey.isPressed);
             }
         }
@@ -243,6 +244,47 @@ namespace Space.Presentation.Controls
                 }
             }
             return true;
+        }
+
+        /// <summary>Render-space frame of the player's main ship: position, rotation and radius.</summary>
+        public bool TryGetMainShipFrame(out Vector3 renderPosition, out Quaternion rotation, out float radius)
+        {
+            renderPosition = default;
+            rotation = Quaternion.identity;
+            radius = 1f;
+            if (!EnsureWorld() || _mainShip == Entity.Null)
+                return false;
+
+            var em = _world.EntityManager;
+            if (!IsLiveShip(em, _mainShip) || !em.HasComponent<LocalToWorld>(_mainShip))
+                return false;
+
+            var ltw = em.GetComponentData<LocalToWorld>(_mainShip);
+            renderPosition = ltw.Position;
+            rotation = ltw.Rotation;
+            radius = em.HasComponent<ShipRadius>(_mainShip) ? em.GetComponentData<ShipRadius>(_mainShip).Value : 1f;
+            return true;
+        }
+
+        /// <summary>Render-space positions and radii of the live ships hostile to the main ship.</summary>
+        public void CollectEnemies(System.Collections.Generic.List<Vector4> enemies)
+        {
+            enemies.Clear();
+            if (!EnsureWorld() || _mainShip == Entity.Null)
+                return;
+            var em = _world.EntityManager;
+            if (!IsLiveShip(em, _mainShip))
+                return;
+
+            using var ships = _ships.ToEntityArray(Allocator.Temp);
+            foreach (var ship in ships)
+            {
+                if (!IsEnemyOf(em, ship, _mainShip) || !IsLiveShip(em, ship) || !em.HasComponent<LocalToWorld>(ship))
+                    continue;
+                var p = em.GetComponentData<LocalToWorld>(ship).Position;
+                var r = em.HasComponent<ShipRadius>(ship) ? em.GetComponentData<ShipRadius>(ship).Value : 1f;
+                enemies.Add(new Vector4(p.x, p.y, p.z, r));
+            }
         }
 
         /// <summary>Render-space position of the player's main ship (centre of the range rings).</summary>

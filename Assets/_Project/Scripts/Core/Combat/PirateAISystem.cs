@@ -9,9 +9,10 @@ using Unity.Mathematics;
 namespace Space.Core.Combat
 {
     /// <summary>
-    /// Simple pirate behaviour: every half second, pick the nearest player ship and order a move to a
-    /// point on a circle around it, inside weapon range, a little further round each time. The AI
-    /// issues the same <see cref="ShipCommand"/> orders as the player.
+    /// Simple pirate behaviour: every half second, pick the nearest player ship and manage power.
+    /// A pirate keeping station alongside the player (tactical engagement, <see cref="FormationSlot"/>)
+    /// does not manoeuvre; otherwise it orders a move to a point on a circle around its prey, inside
+    /// weapon range. The AI issues the same <see cref="ShipCommand"/> orders as the player.
     /// </summary>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateBefore(typeof(ShipMovementSystem))]
@@ -43,6 +44,7 @@ namespace Space.Core.Combat
                 PreyTeams = _prey.ToComponentDataArray<Team>(state.WorldUpdateAllocator),
                 PreyPositions = _prey.ToComponentDataArray<SimPosition>(state.WorldUpdateAllocator),
                 Shields = SystemAPI.GetComponentLookup<Shield>(true),
+                Slots = SystemAPI.GetComponentLookup<FormationSlot>(true),
             }.Schedule();
         }
 
@@ -55,6 +57,7 @@ namespace Space.Core.Combat
             [ReadOnly] public NativeArray<Team> PreyTeams;
             [ReadOnly] public NativeArray<SimPosition> PreyPositions;
             [ReadOnly] public ComponentLookup<Shield> Shields;
+            [ReadOnly] public ComponentLookup<FormationSlot> Slots;
 
             void Execute(Entity entity, in SimPosition position, in Team team, in DynamicBuffer<Weapon> weapons,
                          ref PowerGrid power, DynamicBuffer<ShipCommand> commands)
@@ -81,6 +84,10 @@ namespace Space.Core.Combat
                     return; // nothing left to attack: brake and wait
 
                 ManagePower(ref power, weapons, PreyEntities[nearest]);
+
+                // Sailing alongside its prey: the station is kept by the formation, no manoeuvre.
+                if (Slots.HasComponent(entity) && Slots[entity].Leader != Entity.Null)
+                    return;
 
                 var range = weapons.Length > 0 ? weapons[0].Range : 300f;
                 var target = PreyPositions[nearest].Value;

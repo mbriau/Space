@@ -124,10 +124,20 @@ namespace Space.Presentation.Rendering
                 if (!shot.Hit)
                     color.a *= MissAlpha;
 
+                // Projectiles leave from the turret's muzzle, which recoils.
+                var from = (Vector3)(float3)(shot.From - origin);
+                var turrets = TurretPresenter.Instance;
+                if (turrets != null)
+                {
+                    if (turrets.TryGetMuzzle(shot.Shooter, shot.WeaponIndex, out var muzzle))
+                        from = muzzle;
+                    turrets.NotifyFired(shot.Shooter, shot.WeaponIndex);
+                }
+
                 _active.Add(new Projectile
                 {
                     Line = line,
-                    From = (Vector3)(float3)(shot.From - origin),
+                    From = from,
                     To = (Vector3)(float3)(shot.To - origin),
                     Flight = Mathf.Max(0.05f, shot.FlightSeconds),
                     Length = length,

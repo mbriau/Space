@@ -58,6 +58,24 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Résultats des tests EditMode
 
+      # Joue le premier niveau et capture la vue de la caméra (images dans le journal).
+      # Informatif : un échec ici ne bloque pas la CI.
+      - name: Captures en Play mode
+        id: playmode
+        continue-on-error: true
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: 6000.6.10f1
+          customImage: unityci/editor:ubuntu-6000.6.10f1-linux-il2cpp-4
+          testMode: playmode
+          artifactsPath: artifacts-playmode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Captures en Play mode
+
       - name: Publier les résultats
         if: always()
         uses: actions/upload-artifact@v4
