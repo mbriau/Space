@@ -70,7 +70,8 @@ namespace Space.Presentation.UI
                 "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou imposer une cible   " +
                 "F : mode de tir   Puissance : Q W E R (Maj : retirer)");
             GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
-                "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
+                "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse   " +
+                "I : vaisseau   C : catalogue");
 
             if (Event.current.type == EventType.Repaint)
                 DrawHullBars();

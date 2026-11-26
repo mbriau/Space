@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using Space.Core.Combat;
+using Space.Core.Equipment;
 using Space.Core.Levels;
 using Space.Core.Ships;
 using Space.Core.Time;
+using Space.Presentation.UI;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -12,7 +15,9 @@ namespace Space.Presentation.Game
     /// <summary>
     /// Game flow of a run (M1): sets up a level from its <see cref="LevelDefinition"/>, watches the
     /// objective, pays the reward and offers the next destinations; on defeat, offers a new run.
-    /// The level itself (spawns, objective, combat) runs in the simulation.
+    /// The level itself (spawns, objective, combat) runs in the simulation. The player's ship is
+    /// fitted with the run's equipment (<see cref="RunState.Loadout"/>) when it spawns, and the
+    /// drones of the loadout join it as escorts.
     /// </summary>
     public class LevelRunner : MonoBehaviour
     {
@@ -33,12 +38,47 @@ namespace Space.Presentation.Game
         EntityQuery _libraryQuery;
         EntityQuery _shotsQuery;
 
+        /// <summary>Formation slots of the loadout's drones, on the flagship's flanks.</summary>
+        static readonly float3[] DroneOffsets = { new(-45f, 0f, -40f), new(45f, 0f, -40f) };
+
+        readonly List<(float3 Offset, ItemDefinition Item)> _drones = new();
+        EquipmentMenus _menus;
+        EntityQuery _unfittedFlagships;
+        EntityQuery _unfittedEscorts;
+        EntityQuery _flagshipQuery;
+
         GUIStyle _title;
         GUIStyle _text;
         GUIStyle _button;
 
         public RunState Run => _run;
         public LevelDefinition CurrentLevel => _current;
+        public bool HasStarted => _started;
+
+        public bool IsLevelRunning =>
+            _started && _world != null && _world.IsCreated && !_levelQuery.IsEmpty &&
+            _levelQuery.GetSingleton<LevelState>().Status == LevelStatus.Running;
+
+        public bool IsPaused =>
+            _world != null && _world.IsCreated && !_timeQuery.IsEmpty && _timeQuery.GetSingleton<SimulationTime>().Paused;
+
+        public bool TryGetFlagship(out Entity ship)
+        {
+            ship = Entity.Null;
+            if (_world == null || !_world.IsCreated || _flagshipQuery.IsEmpty)
+                return false;
+            using var ships = _flagshipQuery.ToEntityArray(Allocator.Temp);
+            ship = ships[0];
+            return true;
+        }
+
+        void Awake()
+        {
+            _menus = GetComponent<EquipmentMenus>();
+            if (_menus == null)
+                _menus = gameObject.AddComponent<EquipmentMenus>();
+            _menus.Runner = this;
+        }
 
         bool EnsureWorld()
         {
@@ -54,6 +94,17 @@ namespace Space.Presentation.Game
                 _shipsQuery = em.CreateEntityQuery(ComponentType.ReadOnly<Ship>());
                 _libraryQuery = em.CreateEntityQuery(ComponentType.ReadOnly<ShipLibraryEntry>());
                 _shotsQuery = em.CreateEntityQuery(ComponentType.ReadOnly<ShotEventQueue>());
+                _flagshipQuery = em.CreateEntityQuery(ComponentType.ReadOnly<PlayerFlagship>());
+                _unfittedFlagships = em.CreateEntityQuery(new EntityQueryDesc
+                {
+                    All = new[] { ComponentType.ReadOnly<PlayerFlagship>() },
+                    None = new[] { ComponentType.ReadOnly<EquipmentFitted>() },
+                });
+                _unfittedEscorts = em.CreateEntityQuery(new EntityQueryDesc
+                {
+                    All = new[] { ComponentType.ReadOnly<FormationSlot>(), ComponentType.ReadOnly<Ship>() },
+                    None = new[] { ComponentType.ReadOnly<EquipmentFitted>(), ComponentType.ReadOnly<PlayerFlagship>() },
+                });
                 _started = false;
             }
             return true;
@@ -74,6 +125,8 @@ namespace Space.Presentation.Game
                 _started = true;
             }
 
+            FitSpawnedShips();
+
             var status = _levelQuery.GetSingleton<LevelState>().Status;
             if (status == _shownStatus)
                 return;
@@ -83,6 +136,8 @@ namespace Space.Presentation.Game
             {
                 _run.Credits += _current.RewardCredits;
                 _run.LevelsCompleted++;
+                _run.BetweenLevels = true;
+                _run.RollShop(math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)_run.LevelsCompleted, 0x5109u)));
                 SetPaused(true);
             }
             else if (status == LevelStatus.Lost)
@@ -91,10 +146,42 @@ namespace Space.Presentation.Game
             }
         }
 
+        /// <summary>Fits the flagship and the loadout's drones once the simulation has spawned them.</summary>
+        void FitSpawnedShips()
+        {
+            var em = _world.EntityManager;
+            if (!_unfittedFlagships.IsEmpty)
+            {
+                var stats = LoadoutMath.Compute(_run.Loadout);
+                using var flagships = _unfittedFlagships.ToEntityArray(Allocator.Temp);
+                foreach (var ship in flagships)
+                {
+                    LoadoutApplier.ApplyToFlagship(em, ship, stats);
+                    em.AddComponent<EquipmentFitted>(ship);
+                }
+            }
+
+            if (!_unfittedEscorts.IsEmpty)
+            {
+                using var escorts = _unfittedEscorts.ToEntityArray(Allocator.Temp);
+                foreach (var escort in escorts)
+                {
+                    var offset = em.GetComponentData<FormationSlot>(escort).Offset;
+                    foreach (var (droneOffset, item) in _drones)
+                        if (math.distancesq(offset, droneOffset) < 0.01f)
+                            LoadoutApplier.ApplyToDrone(em, escort, item);
+                    em.AddComponent<EquipmentFitted>(escort);
+                }
+            }
+        }
+
         void StartLevel(LevelDefinition level)
         {
             var em = _world.EntityManager;
             _current = level;
+            _run.BetweenLevels = false;
+            if (_menus != null && _menus.IsOpen)
+                _menus.Close();
 
             // Clear the previous level: ships (with their child entities) and pending shots.
             using (var ships = _shipsQuery.ToEntityArray(Allocator.Temp))
@@ -128,6 +215,15 @@ namespace Space.Presentation.Game
             spawns.Add(new LevelSpawn { Ship = level.Flagship, Role = SpawnRole.Flagship, Position = double3.zero });
             foreach (var escort in level.Escorts)
                 spawns.Add(new LevelSpawn { Ship = escort.Ship, Role = SpawnRole.Escort, Offset = escort.Offset });
+
+            // The drones of the player's loadout fly with the flagship in every level.
+            _drones.Clear();
+            var drones = LoadoutMath.Compute(_run.Loadout).Drones;
+            for (var i = 0; i < drones.Count && i < DroneOffsets.Length; i++)
+            {
+                _drones.Add((DroneOffsets[i], drones[i]));
+                spawns.Add(new LevelSpawn { Ship = drones[i].DroneShip, Role = SpawnRole.Escort, Offset = DroneOffsets[i] });
+            }
             foreach (var enemy in level.Enemies)
             {
                 var angle = math.radians(enemy.AngleDegrees);
@@ -152,7 +248,7 @@ namespace Space.Presentation.Game
             return entity;
         }
 
-        void SetPaused(bool paused)
+        public void SetPaused(bool paused)
         {
             var timeEntity = _timeQuery.GetSingletonEntity();
             var time = _world.EntityManager.GetComponentData<SimulationTime>(timeEntity);
@@ -180,6 +276,8 @@ namespace Space.Presentation.Game
             GUI.Label(new Rect(0, 8, Screen.width, 28), banner, _title);
             GUI.Label(new Rect(0, 36, Screen.width, 22), objective, _text);
 
+            if (_menus != null && _menus.IsOpen)
+                return;
             if (level.Status == LevelStatus.Won)
                 DrawVictory();
             else if (level.Status == LevelStatus.Lost)
@@ -189,13 +287,22 @@ namespace Space.Presentation.Game
         void DrawVictory()
         {
             var next = _current.NextLevels;
-            var height = 120 + next.Length * 70;
+            var height = 170 + next.Length * 70;
             var area = new Rect((Screen.width - 460) * 0.5f, (Screen.height - height) * 0.5f, 460, height);
             DrawPanel(area);
             GUILayout.BeginArea(new Rect(area.x + 16, area.y + 12, area.width - 32, area.height - 24));
             GUILayout.Label("Niveau réussi", _title);
-            GUILayout.Label($"+{_current.RewardCredits} crédits. Où aller ensuite ?", _text);
-            GUILayout.Space(8);
+            GUILayout.Label($"+{_current.RewardCredits} crédits (total {_run.Credits}). Avant de repartir :", _text);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Mon vaisseau (I)", GUILayout.Height(30)))
+                _menus.Open(EquipmentMenus.Page.Ship);
+            if (GUILayout.Button("Magasin (M)", GUILayout.Height(30)))
+                _menus.Open(EquipmentMenus.Page.Shop);
+            if (GUILayout.Button("Catalogue (C)", GUILayout.Height(30)))
+                _menus.Open(EquipmentMenus.Page.Catalog);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(6);
+            GUILayout.Label("Où aller ensuite ?", _text);
             foreach (var destination in next)
             {
                 if (destination == null)

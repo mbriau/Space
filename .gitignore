@@ -48,3 +48,6 @@ Thumbs.db
 # Entities : cache de dépendances de scènes (régénéré)
 /[Aa]ssets/SceneDependencyCache*
 *.slnx
+
+# Sorties des tests (aperçus d'icônes, rapports)
+/artifacts/

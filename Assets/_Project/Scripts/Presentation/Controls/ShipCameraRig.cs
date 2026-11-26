@@ -1,6 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Space.Presentation.UI;
 
 namespace Space.Presentation.Controls
 {
@@ -120,6 +121,9 @@ namespace Space.Presentation.Controls
 
         void ReadInput()
         {
+            if (UiFocus.MenuOpen)
+                return;
+
             var mouse = Mouse.current;
             if (mouse == null)
                 return;
