@@ -90,7 +90,7 @@ namespace Space.Presentation.Ships
             Selected = index;
             Model = ShipModel.Create(ShipDesigns.All[index], transform);
             Range.Ship = Model;
-            _distance = Model.Radius * 3.2f;
+            _distance = Model.Radius * 1.8f;
             _pickerSlot = -1;
         }
 

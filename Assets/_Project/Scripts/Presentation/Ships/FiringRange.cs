@@ -12,7 +12,7 @@ namespace Space.Presentation.Ships
     public class FiringRange : MonoBehaviour
     {
         [Tooltip("Distance from our ship to the target, on the side.")]
-        public float TargetDistance = 300f;
+        public float TargetDistance = 230f;
 
         [Tooltip("The target sits a little ahead, like an enemy on a parallel course.")]
         public float TargetAhead = 30f;
