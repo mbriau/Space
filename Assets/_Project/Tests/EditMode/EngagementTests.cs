@@ -20,8 +20,8 @@ namespace Space.Core.Tests
         {
             var heading = math.normalize(new float3(1f, 0f, 1f));
             var origin = new double3(1000.0, 0.0, -500.0);
-            var onLane = origin + (double3)heading * 2_000_000.0;
-            var point = Engagement.LanePoint(onLane + new double3(0.0, 0.0, 0.0), origin, heading);
+            var onLane = origin + math.normalize((double3)heading) * 2_000_000.0;
+            var point = Engagement.LanePoint(onLane, origin, heading);
             Assert.AreEqual(0.0, math.distance(point, onLane), 1e-3);
         }
 

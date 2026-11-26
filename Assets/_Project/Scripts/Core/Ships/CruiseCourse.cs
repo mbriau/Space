@@ -38,8 +38,10 @@ namespace Space.Core.Ships
         /// </summary>
         public static double3 LanePoint(double3 position, double3 laneOrigin, float3 heading)
         {
-            var along = math.dot(position - laneOrigin, (double3)heading);
-            return laneOrigin + (double3)heading * along;
+            // Normalised in double precision: the lane stays exact thousands of kilometres along.
+            var direction = math.normalize((double3)heading);
+            var along = math.dot(position - laneOrigin, direction);
+            return laneOrigin + direction * along;
         }
 
         /// <summary>Share of its longest weapon range at which an enemy keeps station, so the fight starts.</summary>
