@@ -235,6 +235,7 @@ GameObject:
   - component: {fileID: 1455411569}
   - component: {fileID: 1455411577}
   - component: {fileID: 1455411578}
+  - component: {fileID: 1455411579}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -257,6 +258,7 @@ MonoBehaviour:
   Controls: {fileID: 1455411573}
   MarkerColor: {r: 0.3, g: 1, b: 0.5, a: 0.9}
   DestinationColor: {r: 1, g: 0.85, b: 0.2, a: 0.9}
+  EnemyColor: {r: 1, g: 0.35, b: 0.3, a: 0.85}
 --- !u!114 &1455411570
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,6 +326,13 @@ MonoBehaviour:
   TransitionDuration: 0.5
   SizeInfluence: 0.25
   MaxAutoZoomFactor: 1.4
+  CameraMode: 0
+  TacticalBack: 1.7
+  TacticalHeight: 1
+  TacticalAstern: 0.4
+  TacticalLookShare: 0.3
+  TacticalMargin: 0.85
+  TacticalSharpness: 3
   MaxShake: 3
 --- !u!114 &1455411573
 MonoBehaviour:
@@ -485,6 +494,41 @@ MonoBehaviour:
   Duration: 0.8
   ShakePerDamage: 0.05
   WidthPerMetreOfDistance: 0.004
+--- !u!114 &1455411579
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1455411568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: faf748e60a4188d4fb23fb3c68e2609f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Rendering.SpaceBackdrop
+  Layers:
+  - Name: "N\xE9buleuse"
+    Texture: {fileID: 2800000, guid: ddcac1fac1f5c8943a30c2ef6b724062, type: 3}
+    Tint: {r: 1, g: 1, b: 1, a: 1}
+    Tiling: 1
+    MetresPerTile: 60000
+    Drift: {x: 0.0015, y: 0.0004}
+    Additive: 0
+  - Name: "Petites \xE9toiles"
+    Texture: {fileID: 2800000, guid: efe6ce32a6a4408489775c70e5d32f11, type: 3}
+    Tint: {r: 1, g: 1, b: 1, a: 0.85}
+    Tiling: 1.4
+    MetresPerTile: 5000
+    Drift: {x: 0.004, y: 0.001}
+    Additive: 1
+  - Name: "Grandes \xE9toiles"
+    Texture: {fileID: 2800000, guid: c6944f9f15bd0ca4087bcdf033f0e162, type: 3}
+    Tint: {r: 1, g: 1, b: 1, a: 1}
+    Tiling: 1
+    MetresPerTile: 1500
+    Drift: {x: 0.009, y: 0.002}
+    Additive: 1
+  Depth: 0.8
 --- !u!1 &1679563676
 GameObject:
   m_ObjectHideFlags: 0
