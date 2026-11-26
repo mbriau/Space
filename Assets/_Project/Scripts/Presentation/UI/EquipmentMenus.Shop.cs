@@ -43,7 +43,7 @@ namespace Space.Presentation.UI
                     ? $"Il manque {ItemText.Credits(selected.Price - Run.Credits)}"
                     : $"Acheter ({ItemText.Credits(selected.Price)})";
                 if (ActionButton(label, Run.CanBuy(selected)))
-                    Run.Buy(selected);
+                    Defer(() => Run.Buy(selected));
             }
             GUILayout.EndVertical();
 

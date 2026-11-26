@@ -23,6 +23,12 @@ namespace Space.Presentation.UI
         Vector2 _scroll;
         Vector2 _detailsScroll;
 
+        // Changes to the loadout are applied after the GUI pass, so the layout of a pass never
+        // changes halfway through (IMGUI requires the same controls in its layout and event passes).
+        readonly System.Collections.Generic.List<System.Action> _deferred = new();
+
+        void Defer(System.Action action) => _deferred.Add(action);
+
         public bool IsOpen => _page != Page.None;
         public Page Current => _page;
 
@@ -105,6 +111,13 @@ namespace Space.Presentation.UI
                 case Page.Catalog: DrawCatalogPage(); break;
             }
             GUILayout.EndArea();
+
+            if (_deferred.Count > 0)
+            {
+                foreach (var action in _deferred)
+                    action();
+                _deferred.Clear();
+            }
         }
 
         void DrawHeader()

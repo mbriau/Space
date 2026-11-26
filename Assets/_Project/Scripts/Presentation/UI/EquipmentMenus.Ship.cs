@@ -180,7 +180,11 @@ namespace Space.Presentation.UI
                 GUILayout.Space(8);
                 if ((_slotKind == SlotKind.Weapon || _slotKind == SlotKind.Drone) &&
                     ActionButton("Retirer vers la soute", canEdit, 220))
-                    loadout.Unequip(_slotKind, _slotIndex);
+                {
+                    var kind = _slotKind;
+                    var index = _slotIndex;
+                    Defer(() => loadout.Unequip(kind, index));
+                }
             }
 
             // Items of the hold that fit this slot.
@@ -200,9 +204,8 @@ namespace Space.Presentation.UI
                 GUILayout.Label(new GUIContent($" {candidate.Name} · {ItemText.Summary(candidate)}", ItemIcons.Get(candidate)), MenuStyles.Small, GUILayout.Height(40));
                 if (ActionButton("Équiper ici", canEdit, 110))
                 {
-                    loadout.EquipFromHold(id, _slotIndex);
-                    GUILayout.EndHorizontal();
-                    break;
+                    var index = _slotIndex;
+                    Defer(() => loadout.EquipFromHold(id, index));
                 }
                 GUILayout.EndHorizontal();
             }
@@ -217,17 +220,22 @@ namespace Space.Presentation.UI
             {
                 var kind = ItemCategories.Slot(item.Category);
                 var slot = kind == _slotKind ? _slotIndex : -1;
-                if (loadout.EquipFromHold(item.Id, slot))
+                Defer(() =>
                 {
+                    if (!loadout.EquipFromHold(item.Id, slot))
+                        return;
                     _holdSelection = null;
                     _slotKind = kind;
                     _slotIndex = slot < 0 ? FindSlot(loadout, kind, item.Id) : slot;
-                }
+                });
             }
             if (ActionButton($"Vendre ({ItemText.Credits(ShopGenerator.SellPrice(item))})", canEdit, 170))
             {
-                Run.Sell(item.Id);
-                _holdSelection = null;
+                Defer(() =>
+                {
+                    Run.Sell(item.Id);
+                    _holdSelection = null;
+                });
             }
             GUILayout.EndHorizontal();
         }
