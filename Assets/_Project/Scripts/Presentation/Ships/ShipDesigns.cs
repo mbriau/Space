@@ -50,7 +50,9 @@ namespace Space.Presentation.Ships
                 new[] { "energy_lance", "energy_pulse", null }, Cobalt),
             new ShipDesign("remorqueur", "Remorqueur", "Pousseur aux gros moteurs, conteneurs latéraux", 83, 50f,
                 HullForm.Brick, CargoLayout.SideContainers, BridgeLayout.MidTower, EngineLayout.Block, WingLayout.Fins,
-                new[] { "physical_mortar", MassDriver, null }, Ember),
+                new[] { "physical_mortar", MassDriver, null }, Ember,
+                // The middle turret a little forward, the rear one in the middle of the rear deck.
+                hardpointShifts: new[] { 0f, 0.05f, -0.15f }),
             new ShipDesign("baleine", "Baleine", "Gros porteur, soute ventrale", 97, 58f,
                 HullForm.Rounded, CargoLayout.BellyContainers, BridgeLayout.RearTower, EngineLayout.Quad, WingLayout.Stubs,
                 new[] { "missile_swarm", Laser, MassDriver }, Grape),
@@ -58,5 +60,32 @@ namespace Space.Presentation.Ships
                 HullForm.Wedge, CargoLayout.SideContainers, BridgeLayout.Nose, EngineLayout.Pylons, WingLayout.Stubs,
                 new[] { "energy_thermal", MassDriver, "missile_rockets" }, Coral),
         };
+
+        /// <summary>Designs drawn in the game but not offered in the hangar (smaller pirate ships).</summary>
+        public static readonly IReadOnlyList<ShipDesign> Extra = new[]
+        {
+            Find("heron").Resized("heron-chasseur", "Héron (chasseur)", 22f),
+        };
+
+        /// <summary>A design of the hangar or of <see cref="Extra"/> by id, or null.</summary>
+        public static ShipDesign? Get(string id)
+        {
+            foreach (var design in All)
+                if (design.Id == id)
+                    return design;
+            if (Extra != null)
+                foreach (var design in Extra)
+                    if (design.Id == id)
+                        return design;
+            return null;
+        }
+
+        static ShipDesign Find(string id)
+        {
+            foreach (var design in All)
+                if (design.Id == id)
+                    return design;
+            throw new System.ArgumentException($"Design inconnu : {id}");
+        }
     }
 }

@@ -301,9 +301,21 @@ namespace Space.Presentation.Controls
             if (entity != _nameCacheEntity)
             {
                 _nameCacheEntity = entity;
-                _nameCache = em.HasComponent<ShipName>(entity) ? em.GetComponentData<ShipName>(entity).Value.ToString() : "?";
+                _nameCache = DisplayName(em, entity);
             }
             return _nameCache;
+        }
+
+        /// <summary>The name shown to the player: the hangar design's name when the ship is drawn as one, else its own.</summary>
+        static string DisplayName(EntityManager em, Entity entity)
+        {
+            if (em.HasComponent<ShipVisual>(entity))
+            {
+                var design = Space.Presentation.Ships.ShipDesigns.Get(em.GetComponentData<ShipVisual>(entity).DesignId.ToString());
+                if (design != null)
+                    return design.Value.DisplayName;
+            }
+            return em.HasComponent<ShipName>(entity) ? em.GetComponentData<ShipName>(entity).Value.ToString() : "?";
         }
 
         double3 GetOrigin()
@@ -442,7 +454,7 @@ namespace Space.Presentation.Controls
             if (ship == Entity.Null || !em.HasBuffer<Weapon>(ship))
                 return false;
 
-            shipName = em.HasComponent<ShipName>(ship) ? em.GetComponentData<ShipName>(ship).Value.ToString() : "?";
+            shipName = DisplayName(em, ship);
             var grid = em.HasComponent<PowerGrid>(ship) ? em.GetComponentData<PowerGrid>(ship) : default;
             foreach (var weapon in em.GetBuffer<Weapon>(ship, isReadOnly: true))
             {

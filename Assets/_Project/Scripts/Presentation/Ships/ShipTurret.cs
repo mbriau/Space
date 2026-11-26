@@ -54,5 +54,10 @@ namespace Space.Presentation.Ships
         }
 
         public Vector3 Forward => Head != null ? Head.forward : transform.forward;
+
+        /// <summary>World position of the muzzle the next shot will leave from.</summary>
+        public Vector3 NextMuzzle => Muzzles.Count == 0 || Head == null
+            ? transform.position
+            : Head.TransformPoint(Muzzles[_nextMuzzle % Muzzles.Count]);
     }
 }
