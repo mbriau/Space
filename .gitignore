@@ -51,3 +51,6 @@ Thumbs.db
 
 # Sorties des tests (aperçus d'icônes, rapports)
 /artifacts/
+
+# Historique et originaux des generations Unity AI (non necessaires au projet)
+/GeneratedAssets/

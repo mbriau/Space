@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e62a164603f3aef42a2345b982eda878, type: 3}
+  m_Name: ShipArtLibrary
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Ships.ShipArtLibrary
+  Ships:
+  - DesignId: remorqueur
+    Hull: {fileID: 4300000, guid: d45f83308667ec4468a489b17dce7ecf, type: 2}
+    Material: {fileID: 2100000, guid: 6cb4f7f1ebce4b84f9d7f0c1d165656a, type: 2}
+    Slots:
+    - {x: -0.15007329, y: 1.5507573, z: 18.358967}
+    - {x: -0.20009772, y: 2.451197, z: 5.9028826}
+    - {x: -0.30014658, y: 2.4011726, z: -11.805765}
+    Turrets:
+    - Kind: 3
+      Head: {fileID: 4300000, guid: 3ff81f51003403442bc9bba58f6aef72, type: 2}
+      Muzzles:
+      - {x: -0.008693275, y: 1.1727407, z: 4.7113805}
+      Size: 6.3263316
+    - Kind: 0
+      Head: {fileID: 4300000, guid: 3bcd9fa71da8f214693536dd5ce28fa9, type: 2}
+      Muzzles:
+      - {x: -0.044161275, y: 1.7256474, z: 6.6398635}
+      - {x: 0.932879, y: 1.7744994, z: 6.200195}
+      - {x: -1.0089871, y: 1.7744994, z: 6.200196}
+      Size: 8.231559
+    - Kind: 5
+      Head: {fileID: 4300000, guid: 6b570be90b10e4b46bc27204a347f1b1, type: 2}
+      Muzzles:
+      - {x: 0.031459376, y: 1.5558379, z: 2.1941395}
+      Size: 4.2745476

@@ -37,3 +37,7 @@ Assets/_Project/Art/Placeholder/Meshes/*.asset filter=lfs diff=lfs merge=lfs -te
 
 # Scripts shell : fins de ligne Unix
 *.sh text eol=lf
+
+# Modeles generes et maillages de vaisseaux finis
+*.glb  filter=lfs diff=lfs merge=lfs -text
+Assets/_Project/Art/Ships/**/*.asset filter=lfs diff=lfs merge=lfs -text
