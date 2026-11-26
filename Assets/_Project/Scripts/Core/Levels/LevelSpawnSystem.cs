@@ -54,7 +54,7 @@ namespace Space.Core.Levels
 
                     var prefab = Find(library, spawn.Ship);
                     if (prefab != Entity.Null)
-                        Spawn(em, prefab, spawn);
+                        Spawn(em, prefab, spawn, tick);
 
                     spawn.Done = true;
                     spawns[i] = spawn;
@@ -74,11 +74,12 @@ namespace Space.Core.Levels
             return Entity.Null;
         }
 
-        void Spawn(EntityManager em, Entity prefab, LevelSpawn spawn)
+        void Spawn(EntityManager em, Entity prefab, LevelSpawn spawn, uint tick)
         {
             var entity = em.Instantiate(prefab);
             var position = spawn.Position;
             var rotation = quaternion.identity;
+            var arrivalVelocity = float3.zero;
 
             switch (spawn.Role)
             {
@@ -110,10 +111,15 @@ namespace Space.Core.Levels
 
                 case SpawnRole.Enemy:
                     em.AddComponent<PirateAI>(entity);
-                    // Face the level origin, where the player starts.
+                    // Drops out of hyperspace facing the level origin, where the player starts, still moving.
                     var toOrigin = -(float3)spawn.Position;
                     if (math.lengthsq(toOrigin) > 1e-4f)
-                        rotation = quaternion.LookRotationSafe(math.normalize(toOrigin), math.up());
+                    {
+                        var heading = math.normalize(toOrigin);
+                        rotation = quaternion.LookRotationSafe(heading, math.up());
+                        arrivalVelocity = heading * em.GetComponentData<ShipMovementStats>(entity).MaxSpeed;
+                    }
+                    em.AddComponentData(entity, new HyperspaceArrival { Tick = tick });
                     break;
             }
 
@@ -121,7 +127,7 @@ namespace Space.Core.Levels
             em.SetComponentData(entity, new SimPreviousPosition { Value = position });
             em.SetComponentData(entity, new SimRotation { Value = rotation });
             em.SetComponentData(entity, new SimPreviousRotation { Value = rotation });
-            em.SetComponentData(entity, new ShipVelocity());
+            em.SetComponentData(entity, new ShipVelocity { Linear = arrivalVelocity });
             em.GetBuffer<ShipCommand>(entity).Clear();
         }
     }

@@ -1,30 +1,41 @@
 using Space.Core.Ships;
+using Space.Core.Time;
 using Unity.Burst;
 using Unity.Entities;
 
 namespace Space.Core.Combat
 {
-    /// <summary>Reactor regeneration, shield upkeep and recharge, once per tick before weapons fire.</summary>
+    /// <summary>Shields run on the power their subsystem receives, once per tick before weapons fire.</summary>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(ShipMovementSystem))]
     [UpdateBefore(typeof(WeaponSystem))]
     [BurstCompile]
     public partial struct EnergySystem : ISystem
     {
-        [BurstCompile]
-        public void OnUpdate(ref SystemState state)
+        public void OnCreate(ref SystemState state)
         {
-            new EnergyJob { DeltaTime = SystemAPI.Time.DeltaTime }.ScheduleParallel();
+            state.RequireForUpdate<SimulationTime>();
         }
 
         [BurstCompile]
-        partial struct EnergyJob : IJobEntity
+        public void OnUpdate(ref SystemState state)
+        {
+            new ShieldJob
+            {
+                DeltaTime = SystemAPI.Time.DeltaTime,
+                Tick = SystemAPI.GetSingleton<SimulationTime>().Tick,
+            }.ScheduleParallel();
+        }
+
+        [BurstCompile]
+        partial struct ShieldJob : IJobEntity
         {
             public float DeltaTime;
+            public uint Tick;
 
-            void Execute(ref Energy energy, ref Shield shield)
+            void Execute(in PowerGrid grid, ref Shield shield)
             {
-                DamageModel.UpdateEnergy(ref energy, ref shield, DeltaTime);
+                DamageModel.UpdateShield(ref shield, grid.Shield, Tick, DeltaTime);
             }
         }
     }

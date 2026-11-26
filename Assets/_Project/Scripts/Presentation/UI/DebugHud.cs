@@ -67,8 +67,8 @@ namespace Space.Presentation.UI
             }
 
             GUI.Label(new Rect(16, Screen.height - 48, Screen.width - 32, 22),
-                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou attaquer (missiles)   " +
-                "F : mode de tir   B : bouclier");
+                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou imposer une cible   " +
+                "F : mode de tir   Puissance : Q W E R (Maj : retirer)");
             GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
                 "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
 
@@ -79,21 +79,87 @@ namespace Space.Presentation.UI
                 return;
 
             var shieldText = selection.ShieldMax <= 0f ? "aucun"
-                : !selection.ShieldOnline ? "hors ligne"
-                : $"{selection.Shield:0} / {selection.ShieldMax:0}{(selection.ShieldUp ? "" : " (tombé)")}";
+                : selection.ShieldBrokenSeconds > 0f ? $"BRISÉ ({selection.ShieldBrokenSeconds:0} s)"
+                : !selection.ShieldUp ? "hors tension"
+                : $"{selection.Shield:0} / {selection.ShieldMax:0}";
             var text = $"{selection.Name}{(selection.IsPlayerShip ? "" : " (ennemi)")}\n" +
                        $"Coque : {selection.Hull:0} / {selection.HullMax:0}\n" +
                        $"Bouclier : {shieldText}\n" +
-                       $"Énergie : {selection.Energy:0} / {selection.EnergyMax:0}\n" +
                        $"Vitesse : {selection.Speed:0.0} m/s · ordres : {selection.OrderCount}";
             if (selection.WeaponCount > 0)
-                text += $"\nArmes : {selection.WeaponSummary}\nTir {FireModeLabel(selection.FireMode)}" +
+                text += $"\n{selection.WeaponSummary}\nTir {FireModeLabel(selection.FireMode)}" +
                         (selection.HasAttackTarget ? " · cible imposée" : "");
-            GUI.Box(new Rect(16, Screen.height - 220, 340, 164), text, _panel);
+            var lines = 5 + selection.WeaponCount;
+            var infoHeight = 18 * lines + 16;
+            var infoRect = new Rect(16, Screen.height - 64 - infoHeight, 320, infoHeight);
+            GUI.Box(infoRect, text, _panel);
+
+            if (selection.HasPower)
+                DrawPowerPanel(selection, new Rect(Screen.width - 16 - 330, Screen.height - 64 - 176, 330, 176));
 
             DrawBrackets(selection.RenderPosition, selection.Radius, MarkerColor);
             if (selection.HasDestination)
                 DrawBrackets(selection.DestinationRenderPosition, 0f, DestinationColor);
+        }
+
+        static readonly (PowerSystem System, string Label, string Key)[] PowerRows =
+        {
+            (PowerSystem.Shield, "Bouclier", "Q"),
+            (PowerSystem.EnergyWeapons, "Armes à énergie", "W"),
+            (PowerSystem.PhysicalWeapons, "Armes physiques", "E"),
+            (PowerSystem.Engines, "Moteurs", "R"),
+        };
+
+        /// <summary>
+        /// Reactor output and the power of each subsystem as rows of cells; − and + buttons move one
+        /// unit (enemy ships are shown read-only).
+        /// </summary>
+        void DrawPowerPanel(PlayerControls.SelectionInfo selection, Rect area)
+        {
+            var grid = selection.Power;
+            GUI.color = new Color(0.02f, 0.03f, 0.06f, 0.85f);
+            GUI.DrawTexture(area, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            var x = area.x + 10;
+            var y = area.y + 8;
+            GUI.Label(new Rect(x, y, area.width - 20, 22),
+                $"Réacteur : {grid.Allocated} / {grid.Reactor} utilisés · {grid.Free} libre(s)");
+            DrawCells(new Rect(x, y + 22, area.width - 20, 10), grid.Reactor, grid.Allocated, new Color(1f, 0.8f, 0.3f));
+            y += 42;
+
+            foreach (var (system, label, key) in PowerRows)
+            {
+                var capacity = grid.Capacity(system);
+                if (capacity == 0)
+                    continue;
+
+                GUI.Label(new Rect(x, y, 150, 22), $"{label} [{key}]");
+                if (selection.IsPlayerShip)
+                {
+                    if (GUI.Button(new Rect(x + 150, y + 1, 22, 20), "−"))
+                        Controls.ChangePower(system, -1);
+                    if (GUI.Button(new Rect(x + 286, y + 1, 22, 20), "+"))
+                        Controls.ChangePower(system, +1);
+                }
+                DrawCells(new Rect(x + 176, y + 5, 106, 12), capacity, grid.Get(system), new Color(0.35f, 0.8f, 1f));
+                y += 28;
+            }
+        }
+
+        /// <summary>A row of <paramref name="count"/> cells, the first <paramref name="filled"/> lit.</summary>
+        static void DrawCells(Rect area, int count, int filled, Color color)
+        {
+            if (count <= 0)
+                return;
+            const float gap = 3f;
+            var width = (area.width - gap * (count - 1)) / count;
+            for (var i = 0; i < count; i++)
+            {
+                GUI.color = i < filled ? color : new Color(1f, 1f, 1f, 0.12f);
+                GUI.DrawTexture(new Rect(area.x + i * (width + gap), area.y, width, area.height), Texture2D.whiteTexture);
+            }
+            GUI.color = Color.white;
         }
 
         static string FireModeLabel(FireMode mode) => mode switch

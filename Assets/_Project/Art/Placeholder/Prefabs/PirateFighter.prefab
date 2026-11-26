@@ -276,34 +276,29 @@ MonoBehaviour:
   TurnRateDegrees: 120
   Team: 1
   Hull: 120
-  EnergyMax: 60
-  EnergyRegenPerSecond: 8
+  Power:
+    Reactor: 5
+    ShieldCapacity: 2
+    EnergyWeaponsCapacity: 2
+    PhysicalWeaponsCapacity: 0
+    EnginesCapacity: 2
+    Shield: 2
+    EnergyWeapons: 2
+    PhysicalWeapons: 0
+    Engines: 1
   ShieldMax: 60
-  ShieldRechargePerSecond: 5
-  ShieldUpkeepPerSecond: 2
-  ShieldRechargeCostPerPoint: 1
+  ShieldRechargePerPower: 2
+  ShieldRebootSeconds: 6
   Weapons:
   - Type: 1
     Range: 350
-    Damage: 6
-    ShieldDamage: 0
-    EnergyCost: 4
+    Damage: 4
+    ShieldDamage: 10
     Ammo: -1
     OrderedTargetOnly: 0
-    CooldownSeconds: 0.8
+    CooldownSeconds: 1.5
     ProjectileSpeed: 3000
     SpreadDegrees: 0.4
-    Mode: 0
-  - Type: 0
-    Range: 300
-    Damage: 0
-    ShieldDamage: 8
-    EnergyCost: 6
-    Ammo: -1
-    OrderedTargetOnly: 0
-    CooldownSeconds: 1.2
-    ProjectileSpeed: 2000
-    SpreadDegrees: 0.5
     Mode: 0
 --- !u!1 &5802965558282783999
 GameObject:

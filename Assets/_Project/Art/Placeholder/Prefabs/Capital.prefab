@@ -366,87 +366,87 @@ MonoBehaviour:
   TurnRateDegrees: 10
   Team: 0
   Hull: 3000
-  EnergyMax: 800
-  EnergyRegenPerSecond: 70
+  Power:
+    Reactor: 20
+    ShieldCapacity: 8
+    EnergyWeaponsCapacity: 6
+    PhysicalWeaponsCapacity: 4
+    EnginesCapacity: 4
+    Shield: 6
+    EnergyWeapons: 6
+    PhysicalWeapons: 4
+    Engines: 4
   ShieldMax: 2000
-  ShieldRechargePerSecond: 40
-  ShieldUpkeepPerSecond: 20
-  ShieldRechargeCostPerPoint: 1
+  ShieldRechargePerPower: 10
+  ShieldRebootSeconds: 6
   Weapons:
   - Type: 0
     Range: 700
     Damage: 0
-    ShieldDamage: 30
-    EnergyCost: 15
+    ShieldDamage: 80
     Ammo: -1
     OrderedTargetOnly: 0
-    CooldownSeconds: 1.5
+    CooldownSeconds: 2.5
     ProjectileSpeed: 2000
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 1
     Range: 700
     Damage: 20
-    ShieldDamage: 0
-    EnergyCost: 10
+    ShieldDamage: 50
     Ammo: -1
     OrderedTargetOnly: 0
-    CooldownSeconds: 1.5
+    CooldownSeconds: 2.5
     ProjectileSpeed: 3000
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
     Range: 700
-    Damage: 20
+    Damage: 80
     ShieldDamage: 0
-    EnergyCost: 0
-    Ammo: -1
+    Ammo: 40
     OrderedTargetOnly: 0
-    CooldownSeconds: 2
-    ProjectileSpeed: 900
-    SpreadDegrees: 0.4
+    CooldownSeconds: 3
+    ProjectileSpeed: 1200
+    SpreadDegrees: 0.5
     Mode: 0
   - Type: 0
     Range: 700
     Damage: 0
-    ShieldDamage: 30
-    EnergyCost: 15
+    ShieldDamage: 80
     Ammo: -1
     OrderedTargetOnly: 0
-    CooldownSeconds: 1.5
+    CooldownSeconds: 2.5
     ProjectileSpeed: 2000
     SpreadDegrees: 0.5
     Mode: 0
   - Type: 1
     Range: 700
     Damage: 20
-    ShieldDamage: 0
-    EnergyCost: 10
+    ShieldDamage: 50
     Ammo: -1
     OrderedTargetOnly: 0
-    CooldownSeconds: 1.5
+    CooldownSeconds: 2.5
     ProjectileSpeed: 3000
     SpreadDegrees: 0.4
     Mode: 0
   - Type: 2
     Range: 700
-    Damage: 20
+    Damage: 80
     ShieldDamage: 0
-    EnergyCost: 0
-    Ammo: -1
+    Ammo: 40
     OrderedTargetOnly: 0
-    CooldownSeconds: 2
-    ProjectileSpeed: 900
-    SpreadDegrees: 0.4
+    CooldownSeconds: 3
+    ProjectileSpeed: 1200
+    SpreadDegrees: 0.5
     Mode: 0
   - Type: 3
     Range: 700
     Damage: 300
     ShieldDamage: 250
-    EnergyCost: 0
     Ammo: 6
     OrderedTargetOnly: 1
-    CooldownSeconds: 3
+    CooldownSeconds: 4
     ProjectileSpeed: 2500
     SpreadDegrees: 0.2
     Mode: 0

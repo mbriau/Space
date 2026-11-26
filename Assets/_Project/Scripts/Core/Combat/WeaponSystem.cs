@@ -75,7 +75,7 @@ namespace Space.Core.Combat
             public DynamicBuffer<ShotEvent> Shots;
 
             void Execute(Entity entity, in SimPosition position, in Team team, in AttackTarget attack,
-                         ref Energy energy, DynamicBuffer<Weapon> weapons)
+                         in PowerGrid power, DynamicBuffer<Weapon> weapons)
             {
                 if (Hulls.HasComponent(entity) && Hulls[entity].Current <= 0f)
                     return;
@@ -83,22 +83,25 @@ namespace Space.Core.Combat
                 for (var w = 0; w < weapons.Length; w++)
                 {
                     var weapon = weapons[w];
-                    weapon.CooldownLeft = math.max(0f, weapon.CooldownLeft - DeltaTime);
 
-                    var target = weapon.Enabled && weapon.Ammo != 0
+                    // Weapons charge in proportion to their subsystem's power, and stay idle without it.
+                    var charge = power.Factor(weapon.PowerSource);
+                    weapon.CooldownLeft = math.max(0f, weapon.CooldownLeft - DeltaTime * charge);
+
+                    var target = weapon.Enabled && weapon.Ammo != 0 && charge > 0f
                         ? ChooseTarget(position.Value, team.Value, attack.Value, weapon)
                         : -1;
                     weapon.CurrentTarget = target >= 0 ? Entities[target] : Entity.Null;
 
-                    if (target >= 0 && weapon.CooldownLeft <= 0f && energy.Current >= weapon.EnergyCost)
-                        TryFire(entity, w, ref weapon, ref energy, position.Value, team.Value, target);
+                    if (target >= 0 && weapon.CooldownLeft <= 0f)
+                        TryFire(entity, w, ref weapon, position.Value, team.Value, target);
 
                     weapons[w] = weapon;
                 }
             }
 
             float Effectiveness(in Weapon weapon, Entity target) =>
-                DamageModel.Effectiveness(weapon.Type, Shields.HasComponent(target) ? Shields[target] : default);
+                DamageModel.Effectiveness(weapon, Shields.HasComponent(target) ? Shields[target] : default);
 
             /// <summary>
             /// Index of the target in the arrays, or -1. Each weapon prefers targets it hurts most
@@ -140,7 +143,7 @@ namespace Space.Core.Combat
                 return best;
             }
 
-            void TryFire(Entity shooter, int weaponIndex, ref Weapon weapon, ref Energy energy, double3 from, byte team, int target)
+            void TryFire(Entity shooter, int weaponIndex, ref Weapon weapon, double3 from, byte team, int target)
             {
                 var toTarget = (float3)(Positions[target].Value - from);
                 var distance = math.length(toTarget);
@@ -156,7 +159,6 @@ namespace Space.Core.Combat
                 var hit = random.NextFloat() < probability;
                 var impact = Positions[target].Value;
 
-                energy.Current -= weapon.EnergyCost;
                 if (weapon.Ammo > 0)
                     weapon.Ammo--;
 
@@ -167,7 +169,7 @@ namespace Space.Core.Combat
                     var shield = Shields.HasComponent(targetEntity) ? Shields[targetEntity] : default;
                     if (shield.IsUp)
                         shield.LastHitTick = Tick;
-                    DamageModel.ApplyHit(weapon, ref shield, ref hull);
+                    DamageModel.ApplyHit(weapon, ref shield, ref hull, Tick, SimulationClockBootstrapSystem.TickRate);
                     Hulls[targetEntity] = hull;
                     if (Shields.HasComponent(targetEntity))
                         Shields[targetEntity] = shield;

@@ -23,28 +23,46 @@ namespace Space.Authoring
         [Serializable]
         public class WeaponSpec
         {
+            [Tooltip("Ion and laser draw on the energy weapons subsystem; cannon and missile on the physical one.")]
             public DamageType Type = DamageType.Kinetic;
             [Min(0f)] public float Range = 300f;
 
-            [Tooltip("Damage to the hull (laser, cannon, missile).")]
+            [Tooltip("Damage to the hull, mitigated by the target's shield.")]
             [Min(0f)] public float Damage = 5f;
 
-            [Tooltip("Damage to the shield (ion, missile).")]
+            [Tooltip("Damage to the shield, applied first.")]
             [Min(0f)] public float ShieldDamage;
-
-            [Tooltip("Energy used per shot (ion, laser).")]
-            [Min(0f)] public float EnergyCost;
 
             [Tooltip("Shots available; -1 = unlimited.")]
             public int Ammo = -1;
 
-            [Tooltip("Fires only at the target ordered by the player (missiles).")]
+            [Tooltip("Fires only at the target ordered by the player.")]
             public bool OrderedTargetOnly;
 
+            [Tooltip("Seconds between shots at full power.")]
             [Min(0.05f)] public float CooldownSeconds = 1f;
             [Min(1f)] public float ProjectileSpeed = 1000f;
             [Min(0f)] public float SpreadDegrees = 0.8f;
             public FireMode Mode = FireMode.Normal;
+        }
+
+        [Serializable]
+        public struct PowerSpec
+        {
+            [Tooltip("Total power units produced by the reactor.")]
+            public byte Reactor;
+
+            [Header("Capacité de chaque sous-système")]
+            public byte ShieldCapacity;
+            public byte EnergyWeaponsCapacity;
+            public byte PhysicalWeaponsCapacity;
+            public byte EnginesCapacity;
+
+            [Header("Répartition au départ")]
+            public byte Shield;
+            public byte EnergyWeapons;
+            public byte PhysicalWeapons;
+            public byte Engines;
         }
 
         [Header("Déplacement")]
@@ -56,14 +74,20 @@ namespace Space.Authoring
         public TeamId Team = TeamId.Player;
         [Min(1f)] public float Hull = 100f;
 
-        [Header("Réacteur et bouclier")]
-        [Min(0f)] public float EnergyMax = 50f;
-        [Min(0f)] public float EnergyRegenPerSecond = 5f;
+        [Header("Réacteur")]
+        public PowerSpec Power = new()
+        {
+            Reactor = 4, ShieldCapacity = 0, EnergyWeaponsCapacity = 0, PhysicalWeaponsCapacity = 2, EnginesCapacity = 2,
+            PhysicalWeapons = 2, Engines = 2,
+        };
+
+        [Header("Bouclier")]
         [Tooltip("0 = no shield.")]
         [Min(0f)] public float ShieldMax;
-        [Min(0f)] public float ShieldRechargePerSecond = 5f;
-        [Min(0f)] public float ShieldUpkeepPerSecond = 2f;
-        [Min(0f)] public float ShieldRechargeCostPerPoint = 1f;
+        [Tooltip("Shield points per second for each power unit.")]
+        [Min(0f)] public float ShieldRechargePerPower = 1.5f;
+        [Tooltip("Seconds a broken shield stays down.")]
+        [Min(0f)] public float ShieldRebootSeconds = 6f;
 
         [Header("Armes")]
         public List<WeaponSpec> Weapons = new();
@@ -101,21 +125,26 @@ namespace Space.Authoring
                 AddComponent(entity, new Space.Core.Combat.Team { Value = (byte)authoring.Team });
                 AddComponent(entity, new Hull { Current = authoring.Hull, Max = authoring.Hull });
                 AddComponent(entity, new AttackTarget());
-                AddComponent(entity, new Energy
+
+                var p = authoring.Power;
+                var grid = new PowerGrid
                 {
-                    Current = authoring.EnergyMax,
-                    Max = authoring.EnergyMax,
-                    RegenPerSecond = authoring.EnergyRegenPerSecond,
-                });
+                    Reactor = p.Reactor,
+                    ShieldCapacity = authoring.ShieldMax > 0f ? p.ShieldCapacity : (byte)0,
+                    EnergyWeaponsCapacity = p.EnergyWeaponsCapacity,
+                    PhysicalWeaponsCapacity = p.PhysicalWeaponsCapacity,
+                    EnginesCapacity = p.EnginesCapacity,
+                };
+                PowerMath.Allocate(ref grid, p.Shield, p.EnergyWeapons, p.PhysicalWeapons, p.Engines);
+                AddComponent(entity, grid);
+
                 AddComponent(entity, new Shield
                 {
                     Current = authoring.ShieldMax,
                     Max = authoring.ShieldMax,
-                    RechargePerSecond = authoring.ShieldRechargePerSecond,
-                    UpkeepPerSecond = authoring.ShieldUpkeepPerSecond,
-                    RechargeCostPerPoint = authoring.ShieldRechargeCostPerPoint,
-                    Online = authoring.ShieldMax > 0f,
-                    Active = authoring.ShieldMax > 0f,
+                    RechargePerPower = authoring.ShieldRechargePerPower,
+                    RebootSeconds = authoring.ShieldRebootSeconds,
+                    Active = authoring.ShieldMax > 0f && grid.Shield > 0,
                 });
 
                 var weapons = AddBuffer<Weapon>(entity);
@@ -125,7 +154,6 @@ namespace Space.Authoring
                     {
                         Type = spec.Type,
                         ShieldDamage = spec.ShieldDamage,
-                        EnergyCost = spec.EnergyCost,
                         Ammo = spec.Ammo,
                         OrderedTargetOnly = spec.OrderedTargetOnly,
                         Range = spec.Range,

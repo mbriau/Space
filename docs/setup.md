@@ -64,13 +64,20 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
   peut abîmer, ou la cible imposée par clic droit) et tire selon la probabilité de toucher et son mode :
   normal, nerveux (tire plus vite et plus souvent, rate davantage) ou prudent (ne tire que les coups
   presque sûrs). Touche F pour changer de mode. Les tirs sont résolus avec un tirage déterministe par tick.
-- Énergie et boucliers : le réacteur se recharge en continu ; le bouclier consomme de l'énergie pour rester
-  en ligne et pour se recharger (touche B pour le couper et libérer l'énergie). Types d'armes :
-  ionique (énergie, ne vide que les boucliers), laser (énergie, dégâts à la coque), canon (sans énergie,
-  dégâts à la coque) — un bouclier actif atténue les dégâts physiques selon sa charge (jusqu'à 90 % à
-  pleine charge) sans être vidé par eux — et missiles (munitions limitées : d'abord le bouclier, puis
-  de gros dégâts physiques atténués par ce qu'il en reste ; tirés seulement sur une cible imposée).
-  Chaque arme préfère les cibles qu'elle abîme le plus, puis les plus proches.
+- Puissance : le réacteur produit un nombre fixe d'unités à répartir entre le bouclier, les armes à
+  énergie, les armes physiques et les moteurs (panneau en bas à droite, boutons − / +, ou Q W E R,
+  Maj pour retirer). Chaque sous-système fonctionne en proportion de sa puissance : recharge du
+  bouclier, cadence des armes, vitesse. Sans puissance, une arme ne tire pas et le bouclier tombe.
+- Dégâts : chaque tir retire d'abord du bouclier (dégâts bouclier), puis touche la coque (dégâts coque)
+  atténués selon la charge restante du bouclier (90 % à pleine charge). Un bouclier ramené à zéro est
+  « brisé » quelques secondes avant de pouvoir se recharger. Laser (énergie) : bouclier + coque ;
+  ionique : bouclier seulement ; canon (physique, munitions limitées) : coque ; missiles : bouclier puis
+  gros dégâts, sur cible imposée. Chaque arme préfère les cibles qu'elle abîme le plus.
+- L'IA ennemie répartit aussi sa puissance : bouclier + énergie tant que le bouclier adverse tient,
+  puis armes physiques et tout sur le bouclier quand il est brisé.
+- Premier niveau « Premier contact » : le Cargo seul contre un Raider (un peu plus petit, presque aussi
+  rapide) qui sort d'hyperespace à 650 m. Joueur passif : défaite en 2 min environ ; avec la stratégie
+  ci-dessus : victoire en 1 min 30 environ.
   Règles dans `DamageModel`, testées en EditMode.
 - Les drones tiennent leur place dans la formation du vaisseau principal quand ils n'ont pas d'ordre.
 

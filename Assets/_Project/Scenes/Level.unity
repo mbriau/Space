@@ -200,7 +200,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07fed6794ca6b8246ad163b6ac817b16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Game.LevelRunner
-  FirstLevel: {fileID: 11400000, guid: e70ea8c0e951a2f47be88f9fd78fef4a, type: 2}
+  FirstLevel: {fileID: 11400000, guid: 016c740706e5fd84982f72e42b2af97a, type: 2}
   BaseSeed: 20261126
 --- !u!4 &345359281
 Transform:
@@ -233,6 +233,7 @@ GameObject:
   - component: {fileID: 1455411571}
   - component: {fileID: 1455411570}
   - component: {fileID: 1455411569}
+  - component: {fileID: 1455411577}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -270,6 +271,9 @@ MonoBehaviour:
   Material: {fileID: 2100000, guid: c1b1900b085716f45adc7b39ddb4b2ff, type: 2}
   PlayerColor: {r: 0.45, g: 0.9, b: 1, a: 1}
   EnemyColor: {r: 1, g: 0.45, b: 0.2, a: 1}
+  IonColor: {r: 0.55, g: 0.55, b: 1, a: 1}
+  KineticColor: {r: 1, g: 0.9, b: 0.55, a: 1}
+  MissileColor: {r: 1, g: 0.6, b: 0.15, a: 1}
   MissAlpha: 0.35
   Lifetime: 0.15
   WidthPerMetreOfDistance: 0.002
@@ -312,10 +316,11 @@ MonoBehaviour:
   MaxDistance: 2000
   Distance: 150
   Yaw: 30
-  Pitch: 25
+  Pitch: 35
   OrbitSpeed: 0.25
   ZoomStep: 1.15
   ZoomSharpness: 12
+  FirstFramingRadii: 18
   TransitionDuration: 0.5
   SizeInfluence: 0.25
   MaxAutoZoomFactor: 1.4
@@ -443,6 +448,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1455411577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1455411568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 989fc1060a4a52b40ac90d5549810499, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Rendering.HyperspaceEffects
+  Material: {fileID: 2100000, guid: c1b1900b085716f45adc7b39ddb4b2ff, type: 2}
+  Color: {r: 0.75, g: 0.85, b: 1, a: 1}
+  Duration: 0.9
+  StreakLength: 1500
+  RingRadiusInShipRadii: 6
+  WidthPerMetreOfDistance: 0.008
 --- !u!1 &1679563676
 GameObject:
   m_ObjectHideFlags: 0

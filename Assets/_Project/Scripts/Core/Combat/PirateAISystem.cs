@@ -23,7 +23,7 @@ namespace Space.Core.Combat
         const uint DecisionInterval = 10;
 
         /// <summary>Angle travelled round the target at each decision, in radians.</summary>
-        const float OrbitStep = 0.6f;
+        const float OrbitStep = 0.3f;
 
         EntityQuery _prey;
 
@@ -39,8 +39,10 @@ namespace Space.Core.Combat
             new DecideJob
             {
                 Tick = SystemAPI.GetSingleton<SimulationTime>().Tick,
+                PreyEntities = _prey.ToEntityArray(state.WorldUpdateAllocator),
                 PreyTeams = _prey.ToComponentDataArray<Team>(state.WorldUpdateAllocator),
                 PreyPositions = _prey.ToComponentDataArray<SimPosition>(state.WorldUpdateAllocator),
+                Shields = SystemAPI.GetComponentLookup<Shield>(true),
             }.Schedule();
         }
 
@@ -49,11 +51,13 @@ namespace Space.Core.Combat
         partial struct DecideJob : IJobEntity
         {
             public uint Tick;
+            [ReadOnly] public NativeArray<Entity> PreyEntities;
             [ReadOnly] public NativeArray<Team> PreyTeams;
             [ReadOnly] public NativeArray<SimPosition> PreyPositions;
+            [ReadOnly] public ComponentLookup<Shield> Shields;
 
             void Execute(Entity entity, in SimPosition position, in Team team, in DynamicBuffer<Weapon> weapons,
-                         DynamicBuffer<ShipCommand> commands)
+                         ref PowerGrid power, DynamicBuffer<ShipCommand> commands)
             {
                 if ((Tick + (uint)entity.Index) % DecisionInterval != 0)
                     return;
@@ -76,6 +80,8 @@ namespace Space.Core.Combat
                 if (nearest < 0)
                     return; // nothing left to attack: brake and wait
 
+                ManagePower(ref power, weapons, PreyEntities[nearest]);
+
                 var range = weapons.Length > 0 ? weapons[0].Range : 300f;
                 var target = PreyPositions[nearest].Value;
                 var fromTarget = (float3)(position.Value - target);
@@ -84,6 +90,26 @@ namespace Space.Core.Combat
                 var point = target + new double3(math.cos(angle) * orbit, 0.0, math.sin(angle) * orbit);
 
                 commands.Add(new ShipCommand { Type = ShipCommandType.MoveTo, Point = point, IssuedTick = Tick });
+            }
+
+            /// <summary>
+            /// Same plan as the one suggested to the player: shield and energy weapons while the
+            /// target's shield holds; once it is broken, physical weapons on and everything else on
+            /// the shield.
+            /// </summary>
+            void ManagePower(ref PowerGrid power, in DynamicBuffer<Weapon> weapons, Entity target)
+            {
+                var targetShieldUp = Shields.HasComponent(target) && Shields[target].IsUp;
+                var physicalAmmo = false;
+                foreach (var weapon in weapons)
+                    physicalAmmo |= weapon.PowerSource == PowerSystem.PhysicalWeapons && weapon.Ammo != 0;
+
+                if (!targetShieldUp && physicalAmmo)
+                    PowerMath.Allocate(ref power, shield: power.ShieldCapacity, energyWeapons: 0,
+                                       physicalWeapons: power.PhysicalWeaponsCapacity, engines: 0);
+                else
+                    PowerMath.Allocate(ref power, shield: power.ShieldCapacity - 1, energyWeapons: power.EnergyWeaponsCapacity,
+                                       physicalWeapons: 0, engines: 1);
             }
         }
     }

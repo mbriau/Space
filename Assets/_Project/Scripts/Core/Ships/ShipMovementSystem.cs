@@ -1,3 +1,4 @@
+using Space.Core.Combat;
 using Space.Core.Orders;
 using Unity.Burst;
 using Unity.Entities;
@@ -26,8 +27,15 @@ namespace Space.Core.Ships
             public float DeltaTime;
 
             void Execute(ref SimPosition position, ref SimRotation rotation, ref ShipVelocity velocity,
-                         in ShipMovementStats stats, in FollowTarget follow, DynamicBuffer<ShipCommand> commands)
+                         in ShipMovementStats baseStats, in PowerGrid power, in FollowTarget follow,
+                         DynamicBuffer<ShipCommand> commands)
             {
+                // Engines run in proportion to their power.
+                var engines = DamageModel.EngineFactor(power);
+                var stats = baseStats;
+                stats.MaxSpeed *= engines;
+                stats.Acceleration *= engines;
+
                 // Orders this system does not execute yet (Dock, Undock) are dropped so they cannot block the queue.
                 while (commands.Length > 0 && commands[0].Type != ShipCommandType.MoveTo)
                     commands.RemoveAt(0);

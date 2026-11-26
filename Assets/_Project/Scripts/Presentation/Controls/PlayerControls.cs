@@ -42,10 +42,10 @@ namespace Space.Presentation.Controls
             public float HullMax;
             public float Shield;
             public float ShieldMax;
-            public bool ShieldOnline;
             public bool ShieldUp;
-            public float Energy;
-            public float EnergyMax;
+            public float ShieldBrokenSeconds;
+            public bool HasPower;
+            public PowerGrid Power;
             public int WeaponCount;
             public string WeaponSummary;
             public FireMode FireMode;
@@ -107,8 +107,13 @@ namespace Space.Presentation.Controls
                     SelectNext(em, keyboard.shiftKey.isPressed ? -1 : 1);
                 if (keyboard.fKey.wasPressedThisFrame)
                     CycleFireMode(em);
-                if (keyboard.bKey.wasPressedThisFrame)
-                    ToggleShield(em);
+
+                // Power: Q shield, W energy weapons, E physical weapons, R engines; Shift takes a unit back.
+                var step = keyboard.shiftKey.isPressed ? -1 : 1;
+                if (keyboard.qKey.wasPressedThisFrame) ChangePower(PowerSystem.Shield, step);
+                if (keyboard.wKey.wasPressedThisFrame) ChangePower(PowerSystem.EnergyWeapons, step);
+                if (keyboard.eKey.wasPressedThisFrame) ChangePower(PowerSystem.PhysicalWeapons, step);
+                if (keyboard.rKey.wasPressedThisFrame) ChangePower(PowerSystem.Engines, step);
             }
 
             var mouse = Mouse.current;
@@ -143,7 +148,7 @@ namespace Space.Presentation.Controls
         /// </summary>
         void TrackMainShip(EntityManager em)
         {
-            if (_mainShip == Entity.Null || !em.Exists(_mainShip))
+            if (!IsLiveShip(em, _mainShip))
             {
                 _mainShip = FindMainShip(em);
                 if (_mainShip != Entity.Null)
@@ -195,15 +200,16 @@ namespace Space.Presentation.Controls
                 var shield = em.GetComponentData<Shield>(entity);
                 info.Shield = shield.Current;
                 info.ShieldMax = shield.Max;
-                info.ShieldOnline = shield.Online;
                 info.ShieldUp = shield.IsUp;
+                var tick = _time.IsEmpty ? 0u : _time.GetSingleton<SimulationTime>().Tick;
+                if (shield.BrokenUntilTick > tick)
+                    info.ShieldBrokenSeconds = (shield.BrokenUntilTick - tick) / SimulationClockBootstrapSystem.TickRate;
             }
 
-            if (em.HasComponent<Energy>(entity))
+            if (em.HasComponent<PowerGrid>(entity))
             {
-                var energy = em.GetComponentData<Energy>(entity);
-                info.Energy = energy.Current;
-                info.EnergyMax = energy.Max;
+                info.HasPower = true;
+                info.Power = em.GetComponentData<PowerGrid>(entity);
             }
 
             if (em.HasBuffer<Weapon>(entity))
@@ -242,7 +248,7 @@ namespace Space.Presentation.Controls
                 return false;
 
             var em = _world.EntityManager;
-            if (!em.Exists(_mainShip) || !em.HasComponent<LocalToWorld>(_mainShip))
+            if (!IsLiveShip(em, _mainShip) || !em.HasComponent<LocalToWorld>(_mainShip))
                 return false;
 
             renderPosition = em.GetComponentData<LocalToWorld>(_mainShip).Position;
@@ -257,17 +263,21 @@ namespace Space.Presentation.Controls
             for (var i = 0; i < weapons.Length; i++)
             {
                 if (i > 0)
-                    SummaryBuilder.Append(", ");
+                    SummaryBuilder.Append('\n');
                 var weapon = weapons[i];
                 SummaryBuilder.Append(weapon.Type switch
                 {
-                    DamageType.Ion => "ionique",
-                    DamageType.Laser => "laser",
-                    DamageType.Kinetic => "canon",
-                    _ => "missiles",
+                    DamageType.Ion => "Ionique",
+                    DamageType.Laser => "Laser (énergie)",
+                    DamageType.Kinetic => "Canon (physique)",
+                    _ => "Missiles",
                 });
                 if (weapon.Ammo >= 0)
-                    SummaryBuilder.Append(" (").Append(weapon.Ammo).Append(')');
+                    SummaryBuilder.Append(" · ").Append(weapon.Ammo).Append(" mun.");
+                var charge = weapon.Cooldown > 0f ? 1f - weapon.CooldownLeft / weapon.Cooldown : 1f;
+                SummaryBuilder.Append(weapon.Ammo == 0 ? " · vide"
+                    : charge >= 1f ? (weapon.CurrentTarget != Entity.Null ? " · tire" : " · prête")
+                    : $" · {charge * 100f:0} %");
             }
             return SummaryBuilder.ToString();
         }
@@ -285,6 +295,15 @@ namespace Space.Presentation.Controls
         double3 GetOrigin()
         {
             return _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
+        }
+
+        /// <summary>
+        /// A destroyed entity can linger with only its cleanup components (rendering), so
+        /// <see cref="EntityManager.Exists"/> is not enough: a live ship still has its <see cref="Ship"/> tag.
+        /// </summary>
+        static bool IsLiveShip(EntityManager em, Entity entity)
+        {
+            return entity != Entity.Null && em.Exists(entity) && em.HasComponent<Ship>(entity);
         }
 
         static bool IsPlayerShip(EntityManager em, Entity entity)
@@ -375,17 +394,23 @@ namespace Space.Presentation.Controls
             }
         }
 
-        /// <summary>B: switches the selected ship's shield on or off (off frees its upkeep energy for weapons).</summary>
-        void ToggleShield(EntityManager em)
+        /// <summary>
+        /// Moves one power unit into (delta &gt; 0) or out of (delta &lt; 0) a subsystem of the selected
+        /// ship. Used by the keyboard shortcuts and by the power panel's buttons.
+        /// </summary>
+        public bool ChangePower(PowerSystem system, int delta)
         {
-            if (!TryGetOrderableSelection(em, out var ship) || !em.HasComponent<Shield>(ship))
-                return;
+            if (!EnsureWorld())
+                return false;
+            var em = _world.EntityManager;
+            if (!TryGetOrderableSelection(em, out var ship) || !em.HasComponent<PowerGrid>(ship))
+                return false;
 
-            var shield = em.GetComponentData<Shield>(ship);
-            if (shield.Max <= 0f)
-                return;
-            shield.Online = !shield.Online;
-            em.SetComponentData(ship, shield);
+            var grid = em.GetComponentData<PowerGrid>(ship);
+            var changed = delta > 0 ? PowerMath.TryAdd(ref grid, system) : PowerMath.TryRemove(ref grid, system);
+            if (changed)
+                em.SetComponentData(ship, grid);
+            return changed;
         }
 
         /// <summary>Closest ship under the pointer, using each ship's projected radius.</summary>
