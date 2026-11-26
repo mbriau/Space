@@ -34,3 +34,6 @@
 
 # Maillages générés (YAML volumineux) via Git LFS
 Assets/_Project/Art/Placeholder/Meshes/*.asset filter=lfs diff=lfs merge=lfs -text
+
+# Scripts shell : fins de ligne Unix
+*.sh text eol=lf
