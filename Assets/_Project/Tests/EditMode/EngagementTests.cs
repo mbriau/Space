@@ -37,7 +37,7 @@ namespace Space.Core.Tests
         public void EnemiesKeepStationWithinReachOfTheirWeapons()
         {
             Assert.AreEqual(480f * Engagement.StationRangeShare, Engagement.StationDistance(650f, 480f), 1e-3f);
-            Assert.AreEqual(300f, Engagement.StationDistance(300f, 480f), 1e-3f);
+            Assert.AreEqual(200f, Engagement.StationDistance(200f, 480f), 1e-3f);
             Assert.AreEqual(650f, Engagement.StationDistance(650f, 0f), 1e-3f);
         }
 
