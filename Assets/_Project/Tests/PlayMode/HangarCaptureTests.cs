@@ -34,10 +34,10 @@ namespace Space.PlayMode.Tests
                 viewer.Select(i);
                 viewer.Mode = ShipViewer.CameraMode.Tactical;
                 var id = ShipDesigns.All[i].Id;
-                // Long enough for the first shots to cross the 300 m to the target.
+                // Long enough for the first shots to cross the 230 m to the target.
                 yield return WaitSeconds(2.2f);
                 Capture(viewer.ViewCamera, $"hangar-{id}-tactique");
-                viewer.SetFreeCamera(140f, 18f, 2.6f);
+                viewer.SetFreeCamera(140f, 18f, 1.6f);
                 yield return null;
                 Capture(viewer.ViewCamera, $"hangar-{id}-libre");
             }

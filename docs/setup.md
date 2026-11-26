@@ -117,7 +117,7 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
 - Trois emplacements d'arme par vaisseau : cliquer sur un emplacement pour y installer une arme du catalogue.
   La tourelle dépend de l'arme (`TurretVisuals`) : canons jumeaux, canon lourd, rail, émetteur laser, projecteur
   ionique, lance-missiles ; plus grande pour les armes rares et gourmandes.
-- Champ de tir : une cible invincible à 300 m sur le flanc, comme l'ennemi en combat ; les tourelles tirent avec
+- Champ de tir : une cible invincible à 230 m sur le flanc, comme l'ennemi en combat ; les tourelles tirent avec
   les vrais chiffres de leur arme (rechargement, vitesse des projectiles, dispersion). Purement visuel.
 - Caméra tactique du jeu par défaut (`TacticalFraming`, partagé avec `ShipCameraRig`) ; **V** : caméra libre
   (clic droit ou bouton du milieu + glisser, ou Alt + clic gauche ; molette). **F** : tir ; **← / →** : vaisseau.
