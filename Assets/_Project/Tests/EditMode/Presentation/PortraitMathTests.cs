@@ -43,6 +43,22 @@ namespace Space.Presentation.Tests
         }
 
         [Test]
+        public void ABigHatTurnsWithTheHead()
+        {
+            // The pirate: the ellipse is wide enough to carry the tricorn's brim.
+            var pirate = new PortraitLandmarks
+            {
+                ImageSize = 1024f, HeadCenter = new Vector2(600f, 270f), HeadRadii = new Vector2(330f, 300f),
+                Neck = new Vector2(600f, 570f), TorsoLeft = 220f, TorsoRight = 1000f, BorderPx = 40f,
+            };
+            var pose = new PortraitPose { HeadAngle = 3f };
+            var brim = new Vector2(420f, 150f);
+            var face = new Vector2(520f, 330f);
+            Assert.Greater((PortraitMath.Displace(brim, pirate, pose) - brim).magnitude, 1f, "le bord du chapeau suit la tête");
+            Assert.Greater((PortraitMath.Displace(face, pirate, pose) - face).magnitude, 1f);
+        }
+
+        [Test]
         public void CuesAreFoundByTime()
         {
             var cues = new[]

@@ -121,11 +121,16 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
 - Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
   Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
 
-## Portrait animé de la pilote (prototype)
+## Portraits animés (prototype)
 
-- Menu **Space > Portrait de la pilote** : découpe les patchs de bouche et d'yeux (`PortraitBuilder`) puis ouvre
-  la scène `Scenes/PilotePortrait.unity`. Play : la pilote respire, bouge un peu la tête, cligne des yeux et dit
-  sa réplique en boucle, la bouche synchronisée.
+- Menus **Space > Portraits** : découpent les patchs de bouche et d'yeux de chaque personnage (`PortraitBuilder`)
+  puis ouvrent `Scenes/PilotePortrait.unity` (Kaïa seule) ou `Scenes/DialoguePirate.unity` (Kaïa appelle, Silas
+  Brack lui répond ; `PortraitDialogue` enchaîne les répliques et assombrit celui qui écoute). Play : les
+  personnages respirent, bougent un peu la tête, clignent des yeux et parlent, la bouche synchronisée.
+- Un personnage = une entrée `PortraitBuilder.Character` : dossier, régions de la bouche et des yeux, repères
+  (`PortraitLandmarks` : centre et taille de la tête, cou, torse), voix. Pour en ajouter un : portrait 1024 px,
+  une copie par variante dans `Variants/` (chaque retouche part de l'original : alignement parfait), voix et
+  piste Rhubarb dans `Audio/Voix/<nom>`.
 - Image : `Art/Characters/Pilote/pilote_portrait.png`, recadrée dans l'image générée « radio ». Les variantes de
   bouche (formes de Rhubarb X, A–F) et les yeux fermés sont des retouches Unity AI de ce portrait, dans `Variants/`.
 - Animation sans redessiner : `PortraitLayer` déforme une grille (la tête tourne autour du cou, le torse respire,

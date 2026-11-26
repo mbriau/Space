@@ -43,6 +43,8 @@ namespace Space.Presentation.Characters
         [Header("Voix")]
         public AudioClip Line;
         public TextAsset LipSync;
+        [Tooltip("Plays the line on its own (off when a PortraitDialogue drives the portrait).")]
+        public bool AutoPlay = true;
         [Tooltip("Seconds between two replays of the line (0 = once).")]
         public float RepeatEvery = 9f;
         public float FirstDelay = 1f;
@@ -63,6 +65,12 @@ namespace Space.Presentation.Characters
         float _nextBlink;
         float _blinkLeft;
         float _nod;
+
+        /// <summary>Brightness of the whole portrait (a dialogue dims whoever is listening).</summary>
+        [Range(0f, 1f)] public float Brightness = 1f;
+
+        /// <summary>The voice line is playing.</summary>
+        public bool IsSpeaking => _audio != null && _audio.isPlaying;
 
         /// <summary>The mouth shape shown this frame (for tests and debugging).</summary>
         public string CurrentShape { get; private set; } = "X";
@@ -92,7 +100,7 @@ namespace Space.Presentation.Characters
         void Update()
         {
             var t = Time.time;
-            if (Line != null && !_audio.isPlaying && t >= _nextPlay && _nextPlay > 0f)
+            if (AutoPlay && Line != null && !_audio.isPlaying && t >= _nextPlay && _nextPlay > 0f)
             {
                 Speak();
                 _nextPlay = RepeatEvery > 0f ? t + Line.length + RepeatEvery : -1f;
@@ -125,6 +133,9 @@ namespace Space.Presentation.Characters
         void LateUpdate()
         {
             var pose = Pose;
+            foreach (var layer in new[] { Base, Eyes, Mouth })
+                if (layer != null)
+                    layer.Brightness = Brightness;
             if (Base != null)
                 Base.Apply(Landmarks, pose);
 
