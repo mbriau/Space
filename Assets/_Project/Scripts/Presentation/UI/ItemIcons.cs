@@ -101,7 +101,7 @@ namespace Space.Presentation.UI
                 case ItemCategory.Shield: PaintShield(c, item, color); break;
                 case ItemCategory.EnergyWeapon: PaintEnergyWeapon(c, item.Weapon, color, new float2(0.5f, 0.5f), 1f); break;
                 case ItemCategory.PhysicalWeapon: PaintCannon(c, item.Weapon, color, new float2(0.5f, 0.5f), 1f); break;
-                case ItemCategory.Missile: PaintMissiles(c, item.Weapon, color); break;
+                case ItemCategory.Missile: PaintMissiles(c, item, color); break;
                 case ItemCategory.Engine: PaintEngine(c, item, color); break;
                 case ItemCategory.Armor: PaintArmor(c, item, color); break;
                 default: PaintDrone(c, item, color); break;
