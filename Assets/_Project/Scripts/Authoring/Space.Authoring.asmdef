@@ -4,6 +4,7 @@
     "references": [
         "Space.Core",
         "Unity.Entities",
+        "Unity.Collections",
         "Unity.Entities.Hybrid",
         "Unity.Mathematics",
         "Unity.Transforms"

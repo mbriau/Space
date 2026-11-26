@@ -45,3 +45,6 @@ sysinfo.txt
 # OS
 .DS_Store
 Thumbs.db
+# Entities : cache de dépendances de scènes (régénéré)
+/[Aa]ssets/SceneDependencyCache*
+*.slnx

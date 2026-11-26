@@ -4,6 +4,7 @@
     "references": [
         "Space.Core",
         "Unity.Entities",
+        "Unity.Collections",
         "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

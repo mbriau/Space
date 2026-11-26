@@ -31,3 +31,6 @@
 *.so   filter=lfs diff=lfs merge=lfs -text
 *.a    filter=lfs diff=lfs merge=lfs -text
 *.cubemap filter=lfs diff=lfs merge=lfs -text
+
+# Maillages générés (YAML volumineux) via Git LFS
+Assets/_Project/Art/Placeholder/Meshes/*.asset filter=lfs diff=lfs merge=lfs -text
