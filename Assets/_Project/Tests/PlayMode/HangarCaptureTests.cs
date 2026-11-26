@@ -19,14 +19,10 @@ namespace Space.PlayMode.Tests
         [Timeout(600000)]
         public IEnumerator CaptureEveryShip()
         {
+            // A fresh scene next to the test runner's own: unloading the runner's scene would stop
+            // this coroutine for good (and with it the timeout), so it stays loaded.
             var scene = SceneManager.CreateScene("HangarTest");
             SceneManager.SetActiveScene(scene);
-            for (var i = SceneManager.sceneCount - 1; i >= 0; i--)
-            {
-                var other = SceneManager.GetSceneAt(i);
-                if (other != scene && other.isLoaded)
-                    yield return SceneManager.UnloadSceneAsync(other);
-            }
 
             var viewer = new GameObject("Hangar").AddComponent<ShipViewer>();
             yield return null;
@@ -47,13 +43,20 @@ namespace Space.PlayMode.Tests
             }
 
             Assert.Greater(viewer.Range.ShotsFired, 10, "les tourelles n'ont presque pas tiré");
+            UnityEngine.Object.Destroy(viewer.ViewCamera.gameObject);
+            UnityEngine.Object.Destroy(viewer.gameObject);
+            yield return SceneManager.UnloadSceneAsync(scene);
         }
 
         static IEnumerator WaitSeconds(float seconds)
         {
-            var end = Time.time + seconds;
-            while (Time.time < end)
+            // Real time, bounded by a frame count too, so a stalled clock cannot hang the CI.
+            var waited = 0f;
+            for (var frames = 0; waited < seconds && frames < 2000; frames++)
+            {
+                waited += Time.unscaledDeltaTime;
                 yield return null;
+            }
         }
 
         static void Capture(Camera camera, string name)

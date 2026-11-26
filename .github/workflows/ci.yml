@@ -63,6 +63,7 @@ jobs:
       - name: Captures en Play mode
         id: playmode
         continue-on-error: true
+        timeout-minutes: 20
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
