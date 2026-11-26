@@ -11,6 +11,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  checks: write   # GameCI publie le rapport de tests en check run
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
