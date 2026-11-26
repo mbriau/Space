@@ -51,16 +51,16 @@ namespace Space.Presentation.Controls
         public Mode CameraMode = Mode.Tactical;
 
         [Tooltip("Distance behind our ship, in ship radii (before the wheel factor).")]
-        [Min(1f)] public float TacticalBack = 3.4f;
+        [Min(1f)] public float TacticalBack = 2.6f;
 
         [Tooltip("Height above our ship, in ship radii.")]
-        public float TacticalHeight = 1.1f;
+        public float TacticalHeight = 1.5f;
 
         [Tooltip("Offset toward the stern, in ship radii: the camera looks along the hull a little.")]
-        public float TacticalAstern = 1.2f;
+        public float TacticalAstern = 0.8f;
 
         [Tooltip("Where the camera looks, between our ship (0) and the enemies (1).")]
-        [Range(0f, 1f)] public float TacticalLookShare = 0.35f;
+        [Range(0f, 1f)] public float TacticalLookShare = 0.3f;
 
         [Tooltip("Share of the half field of view the framed points may use (margin at the screen edge).")]
         [Range(0.5f, 1f)] public float TacticalMargin = 0.85f;

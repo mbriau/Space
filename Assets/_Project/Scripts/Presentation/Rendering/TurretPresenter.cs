@@ -20,12 +20,12 @@ namespace Space.Presentation.Rendering
         public static TurretPresenter Instance { get; private set; }
 
         [Tooltip("Turret size as a share of the ship radius.")]
-        [Range(0.03f, 0.3f)] public float SizeShare = 0.11f;
+        [Range(0.03f, 0.3f)] public float SizeShare = 0.15f;
 
         [Tooltip("Turn rate of the turret heads, degrees per simulated second.")]
         public float TurnRate = 70f;
 
-        public Color PlayerColor = new(0.55f, 0.6f, 0.68f);
+        public Color PlayerColor = new(0.75f, 0.8f, 0.88f);
         public Color EnemyColor = new(0.55f, 0.3f, 0.3f);
         public Color BarrelColor = new(0.22f, 0.23f, 0.26f);
         public Color EnergyTipColor = new(1f, 0.4f, 0.6f);

@@ -16,8 +16,8 @@ namespace Space.Presentation.Rendering
         [Min(16)] public int Count = 700;
         [Tooltip("Radius of the dust volume around the camera, in metres.")]
         [Min(10f)] public float Radius = 450f;
-        public Vector2 SizeRange = new(0.5f, 1.8f);
-        public Color Color = new(0.55f, 0.65f, 0.8f, 1f);
+        public Vector2 SizeRange = new(1.2f, 3.5f);
+        public Color Color = new(0.7f, 0.8f, 1f, 1f);
 
         double3[] _points;
         float[] _sizes;

@@ -19,6 +19,8 @@ namespace Space.Presentation.UI
         public PlayerControls Controls;
         public Color MarkerColor = new Color(0.3f, 1f, 0.5f, 0.9f);
         public Color DestinationColor = new Color(1f, 0.85f, 0.2f, 0.9f);
+        public Color EnemyColor = new Color(1f, 0.35f, 0.3f, 0.85f);
+        readonly System.Collections.Generic.List<Vector4> _enemies = new();
 
         Camera _camera;
         World _world;
@@ -74,7 +76,16 @@ namespace Space.Presentation.UI
                 "I : vaisseau   C : catalogue");
 
             if (Event.current.type == EventType.Repaint)
+            {
                 DrawHullBars();
+                // Enemies are far away in the tactical view: always mark them.
+                if (Controls != null)
+                {
+                    Controls.CollectEnemies(_enemies);
+                    foreach (var e in _enemies)
+                        DrawBrackets(new Vector3(e.x, e.y, e.z), e.w, EnemyColor);
+                }
+            }
 
             if (Controls == null || !Controls.TryGetSelection(out var selection))
                 return;
