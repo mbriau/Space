@@ -45,7 +45,7 @@ namespace Space.Core.Ships
         }
 
         /// <summary>Share of its longest weapon range at which an enemy keeps station, so the fight starts.</summary>
-        public const float StationRangeShare = 0.85f;
+        public const float StationRangeShare = 0.5f;
 
         /// <summary>
         /// Distance abeam an enemy keeps: the authored distance, brought within reach of its weapons
