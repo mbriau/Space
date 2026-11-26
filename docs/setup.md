@@ -39,12 +39,11 @@ Menu **Space > Generate Placeholder Ships** : génère dans `Assets/_Project/Art
 un matériau URP Lit par classe et un `ShipAuthoring` sur chaque prefab. Le nombre de triangles par LOD
 est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGenerator.Classes`.
 
-## Première scène de test
+## Scène de test
 
-1. Nouvelle scène `Assets/_Project/Scenes/Sandbox.unity`.
-2. GameObject > New Sub Scene > Empty Scene.
-3. Glisser un ou plusieurs prefabs de `Art/Placeholder/Prefabs` dans la sous-scène.
-4. Play : les vaisseaux sont des entités rendues par Entities Graphics.
+`Assets/_Project/Scenes/Sandbox.unity` contient une lumière, une caméra et une sous-scène (`Sandbox_Ships.unity`)
+avec un exemplaire de chaque vaisseau temporaire. Play : les vaisseaux sont des entités rendues par Entities Graphics
+(le renderer URP doit rester en Forward+).
 
 ## Tests
 
