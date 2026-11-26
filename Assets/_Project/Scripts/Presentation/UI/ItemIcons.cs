@@ -294,15 +294,16 @@ namespace Space.Presentation.UI
             }
             else
             {
-                var columns = count <= 4 ? 2 : 4;
+                // Up to four rockets per row, two rows at most.
+                var columns = math.min(count, 4);
                 var rows = (count + columns - 1) / columns;
-                var length = Size * (count <= 4 ? 0.36f : 0.26f);
-                var radius = Size * (count <= 4 ? 0.04f : 0.028f);
+                var length = Size * (rows == 1 ? 0.42f : 0.26f);
+                var radius = Size * (count <= 4 ? 0.036f : 0.028f);
                 var n = 0;
                 for (var r = 0; r < rows && n < count; r++)
                 for (var col = 0; col < columns && n < count; col++, n++)
                 {
-                    var tail = P(0.18f + col * (0.62f / columns), 0.14f + r * (0.66f / rows) * 0.6f);
+                    var tail = P(0.5f + (col - (columns - 1) * 0.5f) * 0.17f, rows == 1 ? 0.2f : 0.12f + r * 0.38f);
                     Rocket(c, tail, new float2(0f, 1f), length, radius, body, tip);
                 }
             }

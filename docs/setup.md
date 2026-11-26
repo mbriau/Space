@@ -85,6 +85,24 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
   Règles dans `DamageModel`, testées en EditMode.
 - Les drones tiennent leur place dans la formation du vaisseau principal quand ils n'ont pas d'ordre.
 
+## Équipement, magasin et catalogue (M1, sprint 3)
+
+- 64 objets en 8 catégories (réacteurs, boucliers, armes à énergie, armes physiques, missiles,
+  moteurs, blindages, drones), définis dans `Core/Equipment/ItemCatalog.cs`. Ce sont des compromis
+  plutôt qu'une progression : grosse frappe mais courte portée ou rechargement long, bouclier solide
+  mais gourmand en puissance ou lent à redémarrer, réacteur puissant mais lourd ou fragile.
+- Le vaisseau a 4 emplacements fixes (réacteur, bouclier, moteurs, blindage), 3 emplacements d'arme et
+  2 de drone, plus une soute (`ShipLoadout`). `LoadoutMath` calcule ce que l'équipement fait du vaisseau
+  (coque, bouclier, capacités de puissance, vitesse, armes) ; l'équipement d'origine reproduit le Cargo
+  du duel. `LevelRunner` l'applique au vaisseau principal et aux drones achetés quand ils apparaissent.
+- Magasin entre les niveaux (`ShopGenerator`) : 8 offres tirées au hasard selon l'avancée de la partie,
+  2 par catégorie au plus, toujours au moins 2 objets trop chers. Revente : moitié du prix.
+- Menus provisoires en IMGUI : **I** mon vaisseau, **M** magasin (entre les niveaux), **C** catalogue,
+  **Échap** pour fermer ; aussi accessibles depuis l'écran de victoire. Ouvrir un menu en combat met
+  la partie en pause ; l'équipement ne se change qu'entre les niveaux.
+- Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
+  Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
+
 ## Scène de test
 
 `Assets/_Project/Scenes/Sandbox.unity` contient une lumière, une caméra et une sous-scène (`Sandbox_Ships.unity`)
