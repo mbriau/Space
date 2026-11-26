@@ -27,6 +27,34 @@ namespace Space.Presentation.Tests
             }
         }
 
+        [Test]
+        public void HardpointShiftsMoveTheRemorqueurTurrets()
+        {
+            var tug = ShipDesigns.Get("remorqueur").Value;
+            Assert.IsNotNull(tug.HardpointShifts, "le Remorqueur a des emplacements ajustés à la main");
+            var plain = new ShipDesign(tug.Id, tug.DisplayName, tug.Role, tug.Seed, tug.Length, tug.Hull, tug.Cargo,
+                tug.Bridge, tug.Engines, tug.Wings, tug.DefaultWeapons, tug.Palette);
+
+            var moved = ShipGenerator.Generate(tug).Hardpoints;
+            var original = ShipGenerator.Generate(plain).Hardpoints;
+            Assert.AreEqual(original[0].Position, moved[0].Position, "l'avant ne bouge pas");
+            Assert.Greater(moved[1].Position.z, original[1].Position.z, "le milieu avance");
+            Assert.Less(moved[2].Position.z, original[2].Position.z - tug.Length * 0.1f, "l'arrière recule");
+            Assert.Greater(moved[0].Position.z, moved[1].Position.z, "toujours de l'avant vers l'arrière");
+            Assert.Greater(moved[1].Position.z, moved[2].Position.z);
+        }
+
+        [Test]
+        public void ExtraDesignsAreFoundAndSmaller()
+        {
+            var fighter = ShipDesigns.Get("heron-chasseur");
+            Assert.IsNotNull(fighter);
+            var ship = ShipGenerator.Generate(fighter.Value);
+            Assert.That(ship.Bounds.size.z, Is.InRange(fighter.Value.Length * 0.95f, fighter.Value.Length * 1.05f));
+            Assert.AreEqual(ShipLoadout.WeaponSlots, ship.Hardpoints.Count);
+            Assert.IsNull(ShipDesigns.Get("inconnu"));
+        }
+
         [TestCaseSource(nameof(Designs))]
         public void ShipHasTheSizeOfItsDesign(ShipDesign design)
         {

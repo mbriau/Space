@@ -451,6 +451,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: deb25047b4e8a8a46a43da80987feeac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Space.Authoring::Space.Authoring.ShipAuthoring
+  DesignId: 
+  Radius: 0
   MaxSpeed: 100
   Acceleration: 18
   TurnRateDegrees: 70

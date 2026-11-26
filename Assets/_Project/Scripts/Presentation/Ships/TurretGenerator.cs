@@ -21,24 +21,29 @@ namespace Space.Presentation.Ships
     /// <summary>How a weapon item looks once fitted: the turret kind and its size.</summary>
     public static class TurretVisuals
     {
-        public static TurretKind KindFor(ItemDefinition item)
+        public static TurretKind KindFor(ItemDefinition item) =>
+            KindFor(item.Weapon.Type, item.Weapon.ProjectileSpeed, item.Weapon.Damage, item.Weapon.Cooldown);
+
+        /// <summary>The turret kind from the weapon's numbers (used in game, where weapons carry no item id).</summary>
+        public static TurretKind KindFor(DamageType type, float projectileSpeed, float damage, float cooldown)
         {
-            var w = item.Weapon;
-            switch (w.Type)
+            switch (type)
             {
                 case DamageType.Missile: return TurretKind.Missile;
                 case DamageType.Ion: return TurretKind.Ion;
                 case DamageType.Laser: return TurretKind.Laser;
                 default:
-                    if (w.ProjectileSpeed >= 1000f) return TurretKind.Rail;
-                    if (w.Damage >= 100f || w.Cooldown >= 8f) return TurretKind.Heavy;
+                    if (projectileSpeed >= 1000f) return TurretKind.Rail;
+                    if (damage >= 100f || cooldown >= 8f) return TurretKind.Heavy;
                     return TurretKind.Twin;
             }
         }
 
         /// <summary>Bigger for rarer and more power-hungry weapons: 0.9 to about 1.3 of the hardpoint size.</summary>
-        public static float SizeFactor(ItemDefinition item) =>
-            Mathf.Clamp(0.9f + 0.1f * (item.Tier - 1) + 0.05f * (item.Weapon.PowerDraw - 2), 0.85f, 1.35f);
+        public static float SizeFactor(ItemDefinition item) => SizeFactor(item.Tier, item.Weapon.PowerDraw);
+
+        public static float SizeFactor(int tier, int powerDraw) =>
+            Mathf.Clamp(0.9f + 0.1f * (tier - 1) + 0.05f * (powerDraw - 2), 0.85f, 1.35f);
     }
 
     /// <summary>

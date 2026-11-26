@@ -121,13 +121,23 @@ namespace Space.Presentation.Ships
         public readonly string[] DefaultWeapons;
         public readonly ShipPalette Palette;
 
+        /// <summary>
+        /// Hand adjustments of the hardpoints chosen by the generator: per hardpoint (front to back), a
+        /// shift along the ship as a share of its length (+ forward). Null = as generated.
+        /// </summary>
+        public readonly float[] HardpointShifts;
+
         public ShipDesign(string id, string displayName, string role, int seed, float length,
             HullForm hull, CargoLayout cargo, BridgeLayout bridge, EngineLayout engines, WingLayout wings,
-            string[] defaultWeapons, ShipPalette palette)
+            string[] defaultWeapons, ShipPalette palette, float[] hardpointShifts = null)
         {
             Id = id; DisplayName = displayName; Role = role; Seed = seed; Length = length;
             Hull = hull; Cargo = cargo; Bridge = bridge; Engines = engines; Wings = wings;
-            DefaultWeapons = defaultWeapons; Palette = palette;
+            DefaultWeapons = defaultWeapons; Palette = palette; HardpointShifts = hardpointShifts;
         }
+
+        /// <summary>The same design at another size, under another id and name (a smaller pirate fighter, say).</summary>
+        public ShipDesign Resized(string id, string displayName, float length) =>
+            new(id, displayName, Role, Seed, length, Hull, Cargo, Bridge, Engines, Wings, DefaultWeapons, Palette, HardpointShifts);
     }
 }

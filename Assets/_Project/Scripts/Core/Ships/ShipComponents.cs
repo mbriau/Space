@@ -13,6 +13,15 @@ namespace Space.Core.Ships
         public FixedString64Bytes Value;
     }
 
+    /// <summary>
+    /// The generated model the presentation draws for this ship (a design of the hangar, by id), with
+    /// its turrets on the design's hardpoints. Ships without it keep their baked placeholder mesh.
+    /// </summary>
+    public struct ShipVisual : IComponentData
+    {
+        public FixedString32Bytes DesignId;
+    }
+
     /// <summary>Radius of a sphere enclosing the ship, in metres (picking, avoidance, arrival).</summary>
     public struct ShipRadius : IComponentData
     {

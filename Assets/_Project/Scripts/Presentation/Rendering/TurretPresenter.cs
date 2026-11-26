@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Space.Core.Combat;
 using Space.Core.Ships;
 using Space.Core.Time;
+using Space.Presentation.Ships;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Transforms;
@@ -13,7 +14,9 @@ namespace Space.Presentation.Rendering
     /// Every weapon is a turret on the deck of its ship: a base, a rotating head and its barrel(s).
     /// Turrets turn toward their weapon's current target and recoil with a muzzle flash when they
     /// fire (<see cref="NotifyFired"/>, called by <see cref="TracerRenderer"/>, which also starts the
-    /// projectiles at the muzzle). Placeholder shapes built from primitives until the art pass.
+    /// projectiles at the muzzle). A ship with a <see cref="ShipVisual"/> is drawn as its hangar design
+    /// (<see cref="ShipModel"/>: hull, engine halos, generated turrets on the design's hardpoints);
+    /// the others get placeholder turrets built from primitives along their centre line.
     /// </summary>
     public class TurretPresenter : MonoBehaviour
     {
@@ -47,6 +50,9 @@ namespace Space.Presentation.Rendering
         {
             public GameObject Root;
             public readonly List<Turret> Turrets = new();
+
+            /// <summary>The hangar design drawn for the ship, if it has one (then <see cref="Turrets"/> is empty).</summary>
+            public ShipModel Model;
             public int Signature;
             public bool Seen;
         }
@@ -79,8 +85,8 @@ namespace Space.Presentation.Rendering
             {
                 _world = world;
                 var em = world.EntityManager;
-                _query = em.CreateEntityQuery(ComponentType.ReadOnly<Ship>(), ComponentType.ReadOnly<Weapon>(),
-                    ComponentType.ReadOnly<LocalToWorld>(), ComponentType.ReadOnly<ShipRadius>(), ComponentType.ReadOnly<Team>());
+                _query = em.CreateEntityQuery(ComponentType.ReadOnly<Ship>(), ComponentType.ReadOnly<LocalToWorld>(),
+                    ComponentType.ReadOnly<ShipRadius>(), ComponentType.ReadOnly<Team>());
                 _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
             }
             return true;
@@ -107,28 +113,40 @@ namespace Space.Presentation.Rendering
             {
                 foreach (var entity in entities)
                 {
-                    var weapons = em.GetBuffer<Weapon>(entity, true);
-                    if (weapons.Length == 0)
+                    var weapons = em.HasBuffer<Weapon>(entity) ? em.GetBuffer<Weapon>(entity, true) : default;
+                    var weaponCount = weapons.IsCreated ? weapons.Length : 0;
+                    var design = em.HasComponent<ShipVisual>(entity)
+                        ? ShipDesigns.Get(em.GetComponentData<ShipVisual>(entity).DesignId.ToString())
+                        : null;
+                    if (design == null && weaponCount == 0)
                         continue;
 
                     var ltw = em.GetComponentData<LocalToWorld>(entity);
                     var radius = em.GetComponentData<ShipRadius>(entity).Value;
                     var team = em.GetComponentData<Team>(entity).Value;
 
-                    var signature = Signature(weapons);
+                    var signature = Signature(weapons) * 31 + (design?.Id.GetHashCode() ?? 0);
                     if (!_ships.TryGetValue(entity, out var set) || set.Signature != signature || set.Root == null)
                     {
                         if (set?.Root != null)
                             Destroy(set.Root);
-                        set = Build(weapons, radius, team);
+                        set = design != null ? BuildModel(design.Value, weapons) : Build(weapons, radius, team);
                         set.Signature = signature;
                         _ships[entity] = set;
                     }
                     set.Seen = true;
                     set.Root.transform.SetPositionAndRotation(ltw.Position, ltw.Rotation);
 
-                    for (var i = 0; i < set.Turrets.Count && i < weapons.Length; i++)
-                        Animate(em, set.Turrets[i], weapons[i], dt);
+                    if (set.Model != null)
+                    {
+                        for (var i = 0; i < set.Model.Turrets.Count && i < weaponCount; i++)
+                            AnimateModelTurret(em, set.Model.Turrets[i], weapons[i], dt);
+                    }
+                    else
+                    {
+                        for (var i = 0; i < set.Turrets.Count && i < weaponCount; i++)
+                            Animate(em, set.Turrets[i], weapons[i], dt);
+                    }
                 }
             }
 
@@ -146,10 +164,24 @@ namespace Space.Presentation.Rendering
 
         static int Signature(DynamicBuffer<Weapon> weapons)
         {
+            if (!weapons.IsCreated)
+                return 0;
             var hash = weapons.Length;
             foreach (var w in weapons)
                 hash = hash * 31 + (int)w.Type;
             return hash;
+        }
+
+        /// <summary>A turret of a hangar design: it aims at its weapon's target (or holds its bearing) and its recoil decays.</summary>
+        static void AnimateModelTurret(EntityManager em, ShipTurret turret, in Weapon weapon, float dt)
+        {
+            if (turret == null)
+                return;
+            var target = weapon.CurrentTarget;
+            var aim = target != Entity.Null && em.Exists(target) && em.HasComponent<LocalToWorld>(target)
+                ? (Vector3)em.GetComponentData<LocalToWorld>(target).Position
+                : turret.Head.position + turret.Forward * 100f;
+            turret.Aim(aim, dt);
         }
 
         void Animate(EntityManager em, Turret turret, in Weapon weapon, float dt)
@@ -183,21 +215,58 @@ namespace Space.Presentation.Rendering
         /// <summary>A weapon of this ship has just fired: recoil and flash.</summary>
         public void NotifyFired(Entity ship, int weaponIndex)
         {
-            if (_ships.TryGetValue(ship, out var set) && weaponIndex >= 0 && weaponIndex < set.Turrets.Count)
+            if (!_ships.TryGetValue(ship, out var set) || weaponIndex < 0)
+                return;
+            if (set.Model != null)
+            {
+                if (weaponIndex < set.Model.Turrets.Count && set.Model.Turrets[weaponIndex] != null)
+                    set.Model.Turrets[weaponIndex].Fire();
+            }
+            else if (weaponIndex < set.Turrets.Count)
+            {
                 set.Turrets[weaponIndex].Recoil = 1f;
+            }
         }
 
         /// <summary>World position of a weapon's muzzle, for projectiles to start from.</summary>
         public bool TryGetMuzzle(Entity ship, int weaponIndex, out Vector3 position)
         {
             position = default;
-            if (!_ships.TryGetValue(ship, out var set) || weaponIndex < 0 || weaponIndex >= set.Turrets.Count)
+            if (!_ships.TryGetValue(ship, out var set) || weaponIndex < 0)
+                return false;
+            if (set.Model != null)
+            {
+                if (weaponIndex >= set.Model.Turrets.Count || set.Model.Turrets[weaponIndex] == null)
+                    return false;
+                position = set.Model.Turrets[weaponIndex].NextMuzzle;
+                return true;
+            }
+            if (weaponIndex >= set.Turrets.Count)
                 return false;
             position = set.Turrets[weaponIndex].Muzzle.position;
             return true;
         }
 
         // ------------------------------------------------------------------ construction
+
+        /// <summary>
+        /// The hangar design of the ship, with a turret per weapon on the hardpoints in slot order
+        /// (a ship with more weapons than hardpoints leaves the extra ones without a turret).
+        /// </summary>
+        static ShipTurrets BuildModel(in ShipDesign design, DynamicBuffer<Weapon> weapons)
+        {
+            var set = new ShipTurrets { Root = new GameObject($"Ship {design.DisplayName}") };
+            set.Root.hideFlags = HideFlags.DontSave;
+            set.Model = ShipModel.Create(design, set.Root.transform, fitDefaultWeapons: false);
+            var count = weapons.IsCreated ? weapons.Length : 0;
+            for (var i = 0; i < count && i < set.Model.Turrets.Count; i++)
+            {
+                var w = weapons[i];
+                var kind = TurretVisuals.KindFor(w.Type, w.ProjectileSpeed, w.Damage, w.Cooldown);
+                set.Model.SetTurret(i, (kind, TurretVisuals.SizeFactor(1, w.PowerDraw)));
+            }
+            return set;
+        }
 
         ShipTurrets Build(DynamicBuffer<Weapon> weapons, float radius, byte team)
         {

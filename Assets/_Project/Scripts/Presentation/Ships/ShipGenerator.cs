@@ -814,6 +814,21 @@ namespace Space.Presentation.Ships
                 foreach (var z in BestSpots(_center, slots, size, 0f))
                     _ship.Hardpoints.Add(new Hardpoint(new Vector3(0f, FootprintTop(_center, z, size), z), size));
                 _ship.Hardpoints.Sort((a, b) => b.Position.z.CompareTo(a.Position.z));
+
+                // Hand adjustments of the design: slide a hardpoint along the ship, back onto the deck.
+                var shifts = _d.HardpointShifts;
+                if (shifts == null)
+                    return;
+                for (var i = 0; i < _ship.Hardpoints.Count && i < shifts.Length; i++)
+                {
+                    if (shifts[i] == 0f)
+                        continue;
+                    var p = _ship.Hardpoints[i].Position;
+                    var lane = p.x == 0f || _pair == null ? _center : _pair;
+                    p.z = Mathf.Clamp(p.z + shifts[i] * _l, _zTail + size, _zNose - size);
+                    p.y = FootprintTop(lane, p.z, size);
+                    _ship.Hardpoints[i] = new Hardpoint(p, size);
+                }
             }
 
             float FootprintTop(Lane lane, float z, float size)

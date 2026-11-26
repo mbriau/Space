@@ -70,6 +70,13 @@ namespace Space.Authoring
             public byte Engines;
         }
 
+        [Header("Modèle")]
+        [Tooltip("Id of a hangar design drawn for this ship (e.g. remorqueur). Empty = the baked placeholder mesh.")]
+        public string DesignId;
+
+        [Tooltip("Radius of the ship in metres; 0 = from the LODGroup size.")]
+        [Min(0f)] public float Radius;
+
         [Header("Déplacement")]
         [Min(0f)] public float MaxSpeed = 50f;
         [Min(0f)] public float Acceleration = 10f;
@@ -107,7 +114,9 @@ namespace Space.Authoring
 
                 // LODGroup.size is the largest dimension of the ship's bounds.
                 var lodGroup = GetComponent<LODGroup>();
-                var radius = lodGroup != null ? lodGroup.size * 0.5f : 1f;
+                var radius = authoring.Radius > 0f ? authoring.Radius : lodGroup != null ? lodGroup.size * 0.5f : 1f;
+                if (!string.IsNullOrEmpty(authoring.DesignId))
+                    AddComponent(entity, new ShipVisual { DesignId = new FixedString32Bytes(authoring.DesignId) });
 
                 AddComponent<Ship>(entity);
                 AddComponent(entity, new ShipName { Value = new FixedString64Bytes(authoring.name) });

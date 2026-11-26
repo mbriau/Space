@@ -26,16 +26,20 @@ namespace Space.Presentation.Ships
         readonly List<Mesh> _meshes = new();
         MaterialPropertyBlock _block;
 
-        public static ShipModel Create(in ShipDesign design, Transform parent)
+        /// <summary>
+        /// Builds a design in the scene, with its default weapons (hangar) or with empty hardpoints
+        /// (<paramref name="fitDefaultWeapons"/> false: the game fits the turrets of the ship's own weapons).
+        /// </summary>
+        public static ShipModel Create(in ShipDesign design, Transform parent, bool fitDefaultWeapons = true)
         {
             var go = new GameObject(design.DisplayName);
             go.transform.SetParent(parent, false);
             var model = go.AddComponent<ShipModel>();
-            model.Build(ShipGenerator.Generate(design));
+            model.Build(ShipGenerator.Generate(design), fitDefaultWeapons);
             return model;
         }
 
-        void Build(GeneratedShip ship)
+        void Build(GeneratedShip ship, bool fitDefaultWeapons)
         {
             Ship = ship;
             // Same rule as the game: half of the largest dimension.
@@ -67,6 +71,8 @@ namespace Space.Presentation.Ships
 
             for (var i = 0; i < ship.Hardpoints.Count; i++)
                 Turrets.Add(null);
+            if (!fitDefaultWeapons)
+                return;
             var weapons = ship.Design.DefaultWeapons;
             for (var i = 0; i < ship.Hardpoints.Count; i++)
                 SetWeapon(i, weapons != null && i < weapons.Length ? weapons[i] : null);
@@ -86,21 +92,36 @@ namespace Space.Presentation.Ships
         /// <summary>Fits a weapon (catalogue id) on a hardpoint, or empties it with null.</summary>
         public void SetWeapon(int slot, string itemId)
         {
-            if (slot < 0 || slot >= Ship.Hardpoints.Count)
+            var item = string.IsNullOrEmpty(itemId) ? null : ItemCatalog.Get(itemId);
+            if (item == null || !ItemCategories.IsWeapon(item.Category))
+            {
+                SetTurret(slot, null);
                 return;
+            }
+            var turret = SetTurret(slot, (TurretVisuals.KindFor(item), TurretVisuals.SizeFactor(item)));
+            if (turret != null)
+                turret.Weapon = item;
+        }
+
+        /// <summary>
+        /// Builds a turret of the given look on a hardpoint (size as a factor of the hardpoint's), or
+        /// empties it with null. Returns the turret.
+        /// </summary>
+        public ShipTurret SetTurret(int slot, (TurretKind Kind, float SizeFactor)? look)
+        {
+            if (slot < 0 || slot >= Ship.Hardpoints.Count)
+                return null;
             if (Turrets[slot] != null)
             {
                 Destroy(Turrets[slot].gameObject);
                 Turrets[slot] = null;
             }
-
-            var item = string.IsNullOrEmpty(itemId) ? null : ItemCatalog.Get(itemId);
-            if (item == null || !ItemCategories.IsWeapon(item.Category))
-                return;
+            if (look == null)
+                return null;
 
             var hardpoint = Ship.Hardpoints[slot];
-            var kind = TurretVisuals.KindFor(item);
-            var size = hardpoint.Size * TurretVisuals.SizeFactor(item);
+            var kind = look.Value.Kind;
+            var size = hardpoint.Size * look.Value.SizeFactor;
             var meshes = TurretGenerator.Build(kind, size, Ship.Design.Palette);
 
             var root = new GameObject($"Turret {slot + 1}");
@@ -117,11 +138,11 @@ namespace Space.Presentation.Ships
             turret.Head = head.transform;
             turret.Kind = kind;
             turret.Size = size;
-            turret.Weapon = item;
             turret.Muzzles.AddRange(meshes.Muzzles);
             // Stagger the first shots so the turrets do not all fire on the same frame.
             turret.Cooldown = 0.5f + slot * 0.6f;
             Turrets[slot] = turret;
+            return turret;
         }
 
         void Update()

@@ -50,6 +50,13 @@ Menu **Space > Generate Placeholder Ships** : génère dans `Assets/_Project/Art
 un matériau URP Lit par classe et un `ShipAuthoring` sur chaque prefab. Le nombre de triangles par LOD
 est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGenerator.Classes`.
 
+Certaines classes sont dessinées en jeu avec un modèle du hangar (`PlaceholderShipGenerator.Designs`) :
+Cargo → **Remorqueur** (le vaisseau du joueur), Raider → **Colporteur**, PirateFighter → **Héron** réduit à 22 m
+(`heron-chasseur`, dans `ShipDesigns.Extra`). Leur prefab ne porte que la simulation et la bulle de bouclier :
+`ShipAuthoring.DesignId` devient le composant `ShipVisual`, le rayon vient du modèle, et `TurretPresenter` construit
+le modèle (`ShipModel` : coque, halos, une tourelle générée par arme sur les emplacements du design, dans l'ordre
+des emplacements). Le nom affiché est celui du design. Les noms de classe (Cargo, Raider…) restent les clés des niveaux.
+
 ## Niveaux (M1, sprint 2)
 
 - Scène `Assets/_Project/Scenes/Level.unity` (première du build) : caméra avec les contrôles, `Level Runner`
@@ -126,6 +133,8 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
   avec des normales lissées en UV3) ; peinture et émission dans les couleurs de sommets ; halos de réacteurs
   `Space/EngineHalo`. Les shaders sont dans `Art/Shaders/Resources` pour être trouvés dans un build.
 - Trois emplacements d'arme par vaisseau : cliquer sur un emplacement pour y installer une arme du catalogue.
+  Un design peut ajuster ses emplacements à la main (`ShipDesign.HardpointShifts`, en part de la longueur) : le
+  Remorqueur avance celui du milieu et recule celui de l'arrière au milieu du pont arrière.
   La tourelle dépend de l'arme (`TurretVisuals`) : canons jumeaux, canon lourd, rail, émetteur laser, projecteur
   ionique, lance-missiles ; plus grande pour les armes rares et gourmandes.
 - Champ de tir : une cible invincible à 230 m sur le flanc, comme l'ennemi en combat ; les tourelles tirent avec

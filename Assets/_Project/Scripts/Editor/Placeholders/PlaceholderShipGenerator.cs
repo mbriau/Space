@@ -50,6 +50,17 @@ namespace Space.Editor.Placeholders
             new("Raider",       32f,   8f,   6f,   3.0f,  9_000, 2, new Color(0.60f, 0.20f, 0.25f),  47f,  3.2f, 16f),
         };
 
+        /// <summary>
+        /// Classes drawn in game as a design of the hangar (ShipVisual): no placeholder
+        /// mesh, the radius and the shield bubble come from the generated model.
+        /// </summary>
+        public static readonly Dictionary<string, string> Designs = new()
+        {
+            { "Cargo", "remorqueur" },          // the player's ship
+            { "Raider", "colporteur" },         // pirate raider: an armed merchant gone bad
+            { "PirateFighter", "heron-chasseur" },
+        };
+
         /// <summary>Share of the triangle budget kept by each LOD, and the screen height at which it switches.</summary>
         static readonly float[] LodBudgetFactors = { 1f, 0.35f, 0.08f };
         static readonly float[] LodScreenHeights = { 0.30f, 0.08f, 0.01f };
@@ -75,6 +86,9 @@ namespace Space.Editor.Placeholders
 
         static int[] Generate(ShipClass shipClass, int seed)
         {
+            if (Designs.TryGetValue(shipClass.Name, out var designId))
+                return GenerateFromDesign(shipClass, designId);
+
             var material = GetOrCreateMaterial(shipClass);
             var greebles = PlanGreebles(shipClass, seed);
             var triangleCounts = new int[LodBudgetFactors.Length];
@@ -121,6 +135,41 @@ namespace Space.Editor.Placeholders
             }
 
             return triangleCounts;
+        }
+
+        /// <summary>
+        /// A ship drawn as a hangar design: the prefab only carries the simulation data and the
+        /// shield bubble; the presentation builds the model (ShipVisual).
+        /// </summary>
+        static int[] GenerateFromDesign(ShipClass shipClass, string designId)
+        {
+            var design = Space.Presentation.Ships.ShipDesigns.Get(designId)
+                         ?? throw new System.ArgumentException($"Design inconnu : {designId}");
+            var model = Space.Presentation.Ships.ShipGenerator.Generate(design);
+            var bounds = model.Bounds;
+
+            var root = new GameObject(shipClass.Name);
+            try
+            {
+                var ship = root.AddComponent<ShipAuthoring>();
+                ship.DesignId = designId;
+                ship.Radius = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z)) * 0.5f;
+                ship.MaxSpeed = shipClass.MaxSpeed;
+                ship.Acceleration = shipClass.Acceleration;
+                ship.TurnRateDegrees = shipClass.TurnRate;
+                ConfigureCombat(ship, shipClass.Name);
+                if (ship.ShieldMax > 0f)
+                    AddShieldBubble(root, bounds);
+
+                PrefabUtility.SaveAsPrefabAsset(root, $"{Root}/Prefabs/{shipClass.Name}.prefab");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+
+            var triangles = model.Hull.Indices.Count / 3;
+            return new[] { triangles, triangles, triangles };
         }
 
         /// <summary>
