@@ -51,8 +51,11 @@ namespace Space.Presentation.Rendering
             public GameObject Root;
             public readonly List<Turret> Turrets = new();
 
-            /// <summary>The hangar design drawn for the ship, if it has one (then <see cref="Turrets"/> is empty).</summary>
-            public ShipModel Model;
+            /// <summary>
+            /// The turrets of the design model (generated or finished art) when the ship is drawn as a
+            /// hangar design; null for placeholder turrets (<see cref="Turrets"/>).
+            /// </summary>
+            public List<ShipTurret> ModelTurrets;
             public int Signature;
             public bool Seen;
         }
@@ -137,10 +140,10 @@ namespace Space.Presentation.Rendering
                     set.Seen = true;
                     set.Root.transform.SetPositionAndRotation(ltw.Position, ltw.Rotation);
 
-                    if (set.Model != null)
+                    if (set.ModelTurrets != null)
                     {
-                        for (var i = 0; i < set.Model.Turrets.Count && i < weaponCount; i++)
-                            AnimateModelTurret(em, set.Model.Turrets[i], weapons[i], dt);
+                        for (var i = 0; i < set.ModelTurrets.Count && i < weaponCount; i++)
+                            AnimateModelTurret(em, set.ModelTurrets[i], weapons[i], dt);
                     }
                     else
                     {
@@ -217,10 +220,10 @@ namespace Space.Presentation.Rendering
         {
             if (!_ships.TryGetValue(ship, out var set) || weaponIndex < 0)
                 return;
-            if (set.Model != null)
+            if (set.ModelTurrets != null)
             {
-                if (weaponIndex < set.Model.Turrets.Count && set.Model.Turrets[weaponIndex] != null)
-                    set.Model.Turrets[weaponIndex].Fire();
+                if (weaponIndex < set.ModelTurrets.Count && set.ModelTurrets[weaponIndex] != null)
+                    set.ModelTurrets[weaponIndex].Fire();
             }
             else if (weaponIndex < set.Turrets.Count)
             {
@@ -234,11 +237,11 @@ namespace Space.Presentation.Rendering
             position = default;
             if (!_ships.TryGetValue(ship, out var set) || weaponIndex < 0)
                 return false;
-            if (set.Model != null)
+            if (set.ModelTurrets != null)
             {
-                if (weaponIndex >= set.Model.Turrets.Count || set.Model.Turrets[weaponIndex] == null)
+                if (weaponIndex >= set.ModelTurrets.Count || set.ModelTurrets[weaponIndex] == null)
                     return false;
-                position = set.Model.Turrets[weaponIndex].NextMuzzle;
+                position = set.ModelTurrets[weaponIndex].NextMuzzle;
                 return true;
             }
             if (weaponIndex >= set.Turrets.Count)
@@ -257,14 +260,30 @@ namespace Space.Presentation.Rendering
         {
             var set = new ShipTurrets { Root = new GameObject($"Ship {design.DisplayName}") };
             set.Root.hideFlags = HideFlags.DontSave;
-            set.Model = ShipModel.Create(design, set.Root.transform, fitDefaultWeapons: false);
             var count = weapons.IsCreated ? weapons.Length : 0;
-            for (var i = 0; i < count && i < set.Model.Turrets.Count; i++)
+
+            // Finished art when the design has some (textured hull, heads cut out of the model).
+            var art = ShipArtLibrary.For(design.Id);
+            if (art != null)
+            {
+                var artModel = ShipArtModel.Create(art, set.Root.transform);
+                for (var i = 0; i < count && i < artModel.Turrets.Count; i++)
+                {
+                    var w = weapons[i];
+                    artModel.SetTurret(i, TurretVisuals.KindFor(w.Type, w.ProjectileSpeed, w.Damage, w.Cooldown));
+                }
+                set.ModelTurrets = artModel.Turrets;
+                return set;
+            }
+
+            var model = ShipModel.Create(design, set.Root.transform, fitDefaultWeapons: false);
+            for (var i = 0; i < count && i < model.Turrets.Count; i++)
             {
                 var w = weapons[i];
                 var kind = TurretVisuals.KindFor(w.Type, w.ProjectileSpeed, w.Damage, w.Cooldown);
-                set.Model.SetTurret(i, (kind, TurretVisuals.SizeFactor(1, w.PowerDraw)));
+                model.SetTurret(i, (kind, TurretVisuals.SizeFactor(1, w.PowerDraw)));
             }
+            set.ModelTurrets = model.Turrets;
             return set;
         }
 
