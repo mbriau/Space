@@ -121,6 +121,19 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
 - Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
   Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
 
+## Portrait animé de la pilote (prototype)
+
+- Menu **Space > Portrait de la pilote** : découpe les patchs de bouche et d'yeux (`PortraitBuilder`) puis ouvre
+  la scène `Scenes/PilotePortrait.unity`. Play : la pilote respire, bouge un peu la tête, cligne des yeux et dit
+  sa réplique en boucle, la bouche synchronisée.
+- Image : `Art/Characters/Pilote/pilote_portrait.png`, recadrée dans l'image générée « radio ». Les variantes de
+  bouche (formes de Rhubarb X, A–F) et les yeux fermés sont des retouches Unity AI de ce portrait, dans `Variants/`.
+- Animation sans redessiner : `PortraitLayer` déforme une grille (la tête tourne autour du cou, le torse respire,
+  les bords restent fixes ; `PortraitMath`, testé) ; `PortraitRig` pose les patchs de bouche selon la piste.
+- Voix : ElevenLabs (Unity AI) dans `Audio/Voix/Pilote`. Synchro labiale : [Rhubarb Lip Sync](https://github.com/DanielSWolf/rhubarb-lip-sync)
+  téléchargé dans `tools/rhubarb/` (non versionné) :
+  `rhubarb -r phonetic -f json --extendedShapes GHX -d replique.txt -o replique.lipsync.json replique.wav`.
+
 ## Hangar : vaisseaux moyens et champ de tir
 
 - Menu **Space > Hangar (visionneuse de vaisseaux)** : ouvre `Assets/_Project/Scenes/Hangar.unity` (créée au premier
