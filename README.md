@@ -21,3 +21,4 @@ Un mode multijoueur à 2 à 4 joueurs est prévu plus tard.
 ## Documentation
 
 - [Plan agile de développement](docs/plan.md)
+- [Mise en place du projet](docs/setup.md)
