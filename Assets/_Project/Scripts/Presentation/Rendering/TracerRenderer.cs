@@ -16,8 +16,12 @@ namespace Space.Presentation.Rendering
         [Tooltip("Unlit transparent material with vertex colours (Sprites/Default works).")]
         public Material Material;
 
-        public Color PlayerColor = new Color(0.45f, 0.9f, 1f, 1f);
-        public Color EnemyColor = new Color(1f, 0.45f, 0.2f, 1f);
+        [Tooltip("Lasers: colour of the shooter's side.")]
+        public Color PlayerColor = new Color(0.45f, 1f, 0.6f, 1f);
+        public Color EnemyColor = new Color(1f, 0.3f, 0.25f, 1f);
+        public Color IonColor = new Color(0.55f, 0.55f, 1f, 1f);
+        public Color KineticColor = new Color(1f, 0.9f, 0.55f, 1f);
+        public Color MissileColor = new Color(1f, 0.6f, 0.15f, 1f);
         [Range(0f, 1f)] public float MissAlpha = 0.35f;
         [Min(0.01f)] public float Lifetime = 0.15f;
         public float WidthPerMetreOfDistance = 0.002f;
@@ -108,9 +112,16 @@ namespace Space.Presentation.Rendering
                 line.gameObject.SetActive(true);
                 line.SetPosition(0, from);
                 line.SetPosition(1, to);
-                line.widthMultiplier = Mathf.Max(0.3f, Vector3.Distance(cameraPosition, (from + to) * 0.5f) * WidthPerMetreOfDistance);
+                var width = Mathf.Max(0.3f, Vector3.Distance(cameraPosition, (from + to) * 0.5f) * WidthPerMetreOfDistance);
+                line.widthMultiplier = shot.Type == DamageType.Missile ? width * 3f : width;
 
-                var color = shot.Team == Team.Player ? PlayerColor : EnemyColor;
+                var color = shot.Type switch
+                {
+                    DamageType.Ion => IonColor,
+                    DamageType.Kinetic => KineticColor,
+                    DamageType.Missile => MissileColor,
+                    _ => shot.Team == Team.Player ? PlayerColor : EnemyColor,
+                };
                 if (!shot.Hit)
                     color.a *= MissAlpha;
                 line.startColor = line.endColor = color;

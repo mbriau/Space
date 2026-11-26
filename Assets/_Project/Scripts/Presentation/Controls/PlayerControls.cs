@@ -40,7 +40,14 @@ namespace Space.Presentation.Controls
             public bool IsPlayerShip;
             public float Hull;
             public float HullMax;
+            public float Shield;
+            public float ShieldMax;
+            public bool ShieldOnline;
+            public bool ShieldUp;
+            public float Energy;
+            public float EnergyMax;
             public int WeaponCount;
+            public string WeaponSummary;
             public FireMode FireMode;
             public bool HasAttackTarget;
             public int OrderCount;
@@ -100,6 +107,8 @@ namespace Space.Presentation.Controls
                     SelectNext(em, keyboard.shiftKey.isPressed ? -1 : 1);
                 if (keyboard.fKey.wasPressedThisFrame)
                     CycleFireMode(em);
+                if (keyboard.bKey.wasPressedThisFrame)
+                    ToggleShield(em);
             }
 
             var mouse = Mouse.current;
@@ -181,12 +190,29 @@ namespace Space.Presentation.Controls
                 info.HullMax = hull.Max;
             }
 
+            if (em.HasComponent<Shield>(entity))
+            {
+                var shield = em.GetComponentData<Shield>(entity);
+                info.Shield = shield.Current;
+                info.ShieldMax = shield.Max;
+                info.ShieldOnline = shield.Online;
+                info.ShieldUp = shield.IsUp;
+            }
+
+            if (em.HasComponent<Energy>(entity))
+            {
+                var energy = em.GetComponentData<Energy>(entity);
+                info.Energy = energy.Current;
+                info.EnergyMax = energy.Max;
+            }
+
             if (em.HasBuffer<Weapon>(entity))
             {
                 var weapons = em.GetBuffer<Weapon>(entity, isReadOnly: true);
                 info.WeaponCount = weapons.Length;
                 if (weapons.Length > 0)
                     info.FireMode = weapons[0].Mode;
+                info.WeaponSummary = SummarizeWeapons(weapons);
             }
 
             if (em.HasComponent<AttackTarget>(entity))
@@ -221,6 +247,29 @@ namespace Space.Presentation.Controls
 
             renderPosition = em.GetComponentData<LocalToWorld>(_mainShip).Position;
             return true;
+        }
+
+        static readonly System.Text.StringBuilder SummaryBuilder = new();
+
+        static string SummarizeWeapons(DynamicBuffer<Weapon> weapons)
+        {
+            SummaryBuilder.Clear();
+            for (var i = 0; i < weapons.Length; i++)
+            {
+                if (i > 0)
+                    SummaryBuilder.Append(", ");
+                var weapon = weapons[i];
+                SummaryBuilder.Append(weapon.Type switch
+                {
+                    DamageType.Ion => "ionique",
+                    DamageType.Laser => "laser",
+                    DamageType.Kinetic => "canon",
+                    _ => "missiles",
+                });
+                if (weapon.Ammo >= 0)
+                    SummaryBuilder.Append(" (").Append(weapon.Ammo).Append(')');
+            }
+            return SummaryBuilder.ToString();
         }
 
         string GetName(EntityManager em, Entity entity)
@@ -324,6 +373,19 @@ namespace Space.Presentation.Controls
                 weapon.Mode = next;
                 weapons[i] = weapon;
             }
+        }
+
+        /// <summary>B: switches the selected ship's shield on or off (off frees its upkeep energy for weapons).</summary>
+        void ToggleShield(EntityManager em)
+        {
+            if (!TryGetOrderableSelection(em, out var ship) || !em.HasComponent<Shield>(ship))
+                return;
+
+            var shield = em.GetComponentData<Shield>(ship);
+            if (shield.Max <= 0f)
+                return;
+            shield.Online = !shield.Online;
+            em.SetComponentData(ship, shield);
         }
 
         /// <summary>Closest ship under the pointer, using each ship's projected radius.</summary>

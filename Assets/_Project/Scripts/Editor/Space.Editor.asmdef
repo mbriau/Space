@@ -2,7 +2,8 @@
     "name": "Space.Editor",
     "rootNamespace": "Space.Editor",
     "references": [
-        "Space.Authoring"
+        "Space.Authoring",
+        "Space.Core"
     ],
     "includePlatforms": [
         "Editor"

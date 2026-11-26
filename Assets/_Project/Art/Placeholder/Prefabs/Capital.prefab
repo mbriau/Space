@@ -261,42 +261,89 @@ MonoBehaviour:
   TurnRateDegrees: 10
   Team: 0
   Hull: 3000
+  EnergyMax: 800
+  EnergyRegenPerSecond: 70
+  ShieldMax: 2000
+  ShieldRechargePerSecond: 40
+  ShieldUpkeepPerSecond: 20
+  ShieldRechargeCostPerPoint: 1
   Weapons:
-  - Range: 700
+  - Type: 0
+    Range: 700
+    Damage: 0
+    ShieldDamage: 30
+    EnergyCost: 15
+    Ammo: -1
+    OrderedTargetOnly: 0
+    CooldownSeconds: 1.5
+    ProjectileSpeed: 2000
+    SpreadDegrees: 0.5
+    Mode: 0
+  - Type: 1
+    Range: 700
     Damage: 20
-    CooldownSeconds: 2
-    ProjectileSpeed: 1200
+    ShieldDamage: 0
+    EnergyCost: 10
+    Ammo: -1
+    OrderedTargetOnly: 0
+    CooldownSeconds: 1.5
+    ProjectileSpeed: 3000
     SpreadDegrees: 0.4
     Mode: 0
-  - Range: 700
+  - Type: 2
+    Range: 700
     Damage: 20
+    ShieldDamage: 0
+    EnergyCost: 0
+    Ammo: -1
+    OrderedTargetOnly: 0
     CooldownSeconds: 2
-    ProjectileSpeed: 1200
+    ProjectileSpeed: 900
     SpreadDegrees: 0.4
     Mode: 0
-  - Range: 700
+  - Type: 0
+    Range: 700
+    Damage: 0
+    ShieldDamage: 30
+    EnergyCost: 15
+    Ammo: -1
+    OrderedTargetOnly: 0
+    CooldownSeconds: 1.5
+    ProjectileSpeed: 2000
+    SpreadDegrees: 0.5
+    Mode: 0
+  - Type: 1
+    Range: 700
     Damage: 20
-    CooldownSeconds: 2
-    ProjectileSpeed: 1200
+    ShieldDamage: 0
+    EnergyCost: 10
+    Ammo: -1
+    OrderedTargetOnly: 0
+    CooldownSeconds: 1.5
+    ProjectileSpeed: 3000
     SpreadDegrees: 0.4
     Mode: 0
-  - Range: 700
+  - Type: 2
+    Range: 700
     Damage: 20
+    ShieldDamage: 0
+    EnergyCost: 0
+    Ammo: -1
+    OrderedTargetOnly: 0
     CooldownSeconds: 2
-    ProjectileSpeed: 1200
+    ProjectileSpeed: 900
     SpreadDegrees: 0.4
     Mode: 0
-  - Range: 700
-    Damage: 20
-    CooldownSeconds: 2
-    ProjectileSpeed: 1200
-    SpreadDegrees: 0.4
-    Mode: 0
-  - Range: 700
-    Damage: 20
-    CooldownSeconds: 2
-    ProjectileSpeed: 1200
-    SpreadDegrees: 0.4
+  - Type: 3
+    Range: 700
+    Damage: 300
+    ShieldDamage: 250
+    EnergyCost: 0
+    Ammo: 6
+    OrderedTargetOnly: 1
+    CooldownSeconds: 3
+    ProjectileSpeed: 2500
+    SpreadDegrees: 0.2
     Mode: 0
 --- !u!1 &6576061432697398704
 GameObject:

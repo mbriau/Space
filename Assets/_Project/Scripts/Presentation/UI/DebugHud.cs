@@ -67,7 +67,8 @@ namespace Space.Presentation.UI
             }
 
             GUI.Label(new Rect(16, Screen.height - 48, Screen.width - 32, 22),
-                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou attaquer un ennemi   F : mode de tir");
+                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou attaquer (missiles)   " +
+                "F : mode de tir   B : bouclier");
             GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
                 "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
 
@@ -77,14 +78,18 @@ namespace Space.Presentation.UI
             if (Controls == null || !Controls.TryGetSelection(out var selection))
                 return;
 
+            var shieldText = selection.ShieldMax <= 0f ? "aucun"
+                : !selection.ShieldOnline ? "hors ligne"
+                : $"{selection.Shield:0} / {selection.ShieldMax:0}{(selection.ShieldUp ? "" : " (tombé)")}";
             var text = $"{selection.Name}{(selection.IsPlayerShip ? "" : " (ennemi)")}\n" +
                        $"Coque : {selection.Hull:0} / {selection.HullMax:0}\n" +
-                       $"Vitesse : {selection.Speed:0.0} m/s\n" +
-                       $"Ordres en file : {selection.OrderCount}";
+                       $"Bouclier : {shieldText}\n" +
+                       $"Énergie : {selection.Energy:0} / {selection.EnergyMax:0}\n" +
+                       $"Vitesse : {selection.Speed:0.0} m/s · ordres : {selection.OrderCount}";
             if (selection.WeaponCount > 0)
-                text += $"\nArmes : {selection.WeaponCount} · tir {FireModeLabel(selection.FireMode)}" +
+                text += $"\nArmes : {selection.WeaponSummary}\nTir {FireModeLabel(selection.FireMode)}" +
                         (selection.HasAttackTarget ? " · cible imposée" : "");
-            GUI.Box(new Rect(16, Screen.height - 180, 300, 124), text, _panel);
+            GUI.Box(new Rect(16, Screen.height - 220, 340, 164), text, _panel);
 
             DrawBrackets(selection.RenderPosition, selection.Radius, MarkerColor);
             if (selection.HasDestination)
@@ -107,10 +112,12 @@ namespace Space.Presentation.UI
             {
                 _hullWorld = _world;
                 _hullQuery = _world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Hull>(), ComponentType.ReadOnly<Team>(),
-                                                                    ComponentType.ReadOnly<LocalToWorld>(), ComponentType.ReadOnly<ShipRadius>());
+                                                                    ComponentType.ReadOnly<LocalToWorld>(), ComponentType.ReadOnly<ShipRadius>(),
+                                                                    ComponentType.ReadOnly<Shield>());
             }
 
             using var hulls = _hullQuery.ToComponentDataArray<Hull>(Allocator.Temp);
+            using var shields = _hullQuery.ToComponentDataArray<Shield>(Allocator.Temp);
             using var teams = _hullQuery.ToComponentDataArray<Team>(Allocator.Temp);
             using var transforms = _hullQuery.ToComponentDataArray<LocalToWorld>(Allocator.Temp);
             using var radii = _hullQuery.ToComponentDataArray<ShipRadius>(Allocator.Temp);
@@ -133,6 +140,14 @@ namespace Space.Presentation.UI
                 GUI.DrawTexture(new Rect(x - 1, y - 1, width + 2, height + 2), Texture2D.whiteTexture);
                 GUI.color = teams[i].Value == Team.Player ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.35f, 0.25f);
                 GUI.DrawTexture(new Rect(x, y, width * fraction, height), Texture2D.whiteTexture);
+
+                // Shield bar just above the hull bar.
+                var shield = shields[i];
+                if (shield.Max > 0f && shield.IsUp)
+                {
+                    GUI.color = new Color(0.4f, 0.65f, 1f);
+                    GUI.DrawTexture(new Rect(x, y - height - 2f, width * Mathf.Clamp01(shield.Current / shield.Max), height), Texture2D.whiteTexture);
+                }
             }
             GUI.color = Color.white;
         }

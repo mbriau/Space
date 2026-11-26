@@ -51,6 +51,7 @@ namespace Space.Core.Combat
                 Velocities = _targets.ToComponentDataArray<ShipVelocity>(state.WorldUpdateAllocator),
                 Radii = _targets.ToComponentDataArray<ShipRadius>(state.WorldUpdateAllocator),
                 Hulls = SystemAPI.GetComponentLookup<Hull>(false),
+                Shields = SystemAPI.GetComponentLookup<Shield>(false),
                 Shots = SystemAPI.GetSingletonBuffer<ShotEvent>(),
             };
             state.Dependency = job.Schedule(state.Dependency);
@@ -70,10 +71,11 @@ namespace Space.Core.Combat
             [ReadOnly] public NativeArray<ShipRadius> Radii;
 
             public ComponentLookup<Hull> Hulls;
+            public ComponentLookup<Shield> Shields;
             public DynamicBuffer<ShotEvent> Shots;
 
             void Execute(Entity entity, in SimPosition position, in Team team, in AttackTarget attack,
-                         DynamicBuffer<Weapon> weapons)
+                         ref Energy energy, DynamicBuffer<Weapon> weapons)
             {
                 if (Hulls.HasComponent(entity) && Hulls[entity].Current <= 0f)
                     return;
@@ -83,31 +85,43 @@ namespace Space.Core.Combat
                     var weapon = weapons[w];
                     weapon.CooldownLeft = math.max(0f, weapon.CooldownLeft - DeltaTime);
 
-                    var target = weapon.Enabled ? ChooseTarget(position.Value, team.Value, attack.Value, weapon.Range) : -1;
+                    var target = weapon.Enabled && weapon.Ammo != 0
+                        ? ChooseTarget(position.Value, team.Value, attack.Value, weapon)
+                        : -1;
                     weapon.CurrentTarget = target >= 0 ? Entities[target] : Entity.Null;
 
-                    if (target >= 0 && weapon.CooldownLeft <= 0f)
-                        TryFire(entity, w, ref weapon, position.Value, team.Value, target);
+                    if (target >= 0 && weapon.CooldownLeft <= 0f && energy.Current >= weapon.EnergyCost)
+                        TryFire(entity, w, ref weapon, ref energy, position.Value, team.Value, target);
 
                     weapons[w] = weapon;
                 }
             }
 
-            /// <summary>Index of the target in the arrays, or -1. The ordered target wins when it is in range.</summary>
-            int ChooseTarget(double3 from, byte team, Entity ordered, float range)
+            bool ShieldUp(Entity target) => Shields.HasComponent(target) && Shields[target].IsUp;
+
+            /// <summary>
+            /// Index of the target in the arrays, or -1. Each weapon only considers targets it can
+            /// damage right now (ion against raised shields, laser and cannon against bare hulls);
+            /// the ordered target wins when it qualifies.
+            /// </summary>
+            int ChooseTarget(double3 from, byte team, Entity ordered, in Weapon weapon)
             {
+                var rangeSq = (double)weapon.Range * weapon.Range;
                 var best = -1;
-                var bestDistanceSq = (double)range * range;
+                var bestDistanceSq = rangeSq;
                 for (var i = 0; i < Entities.Length; i++)
                 {
-                    if (Teams[i].Value == team || Hulls[Entities[i]].Current <= 0f)
+                    var candidate = Entities[i];
+                    if (Teams[i].Value == team || Hulls[candidate].Current <= 0f)
+                        continue;
+                    if (weapon.OrderedTargetOnly && candidate != ordered)
                         continue;
 
                     var distanceSq = math.distancesq(from, Positions[i].Value);
-                    if (distanceSq > (double)range * range)
+                    if (distanceSq > rangeSq || !DamageModel.IsUseful(weapon.Type, ShieldUp(candidate)))
                         continue;
 
-                    if (Entities[i] == ordered)
+                    if (candidate == ordered)
                         return i;
 
                     if (distanceSq < bestDistanceSq)
@@ -119,7 +133,7 @@ namespace Space.Core.Combat
                 return best;
             }
 
-            void TryFire(Entity shooter, int weaponIndex, ref Weapon weapon, double3 from, byte team, int target)
+            void TryFire(Entity shooter, int weaponIndex, ref Weapon weapon, ref Energy energy, double3 from, byte team, int target)
             {
                 var toTarget = (float3)(Positions[target].Value - from);
                 var distance = math.length(toTarget);
@@ -135,12 +149,19 @@ namespace Space.Core.Combat
                 var hit = random.NextFloat() < probability;
                 var impact = Positions[target].Value;
 
+                energy.Current -= weapon.EnergyCost;
+                if (weapon.Ammo > 0)
+                    weapon.Ammo--;
+
                 if (hit)
                 {
                     var targetEntity = Entities[target];
                     var hull = Hulls[targetEntity];
-                    hull.Current = math.max(0f, hull.Current - weapon.Damage);
+                    var shield = Shields.HasComponent(targetEntity) ? Shields[targetEntity] : default;
+                    DamageModel.ApplyHit(weapon, ref shield, ref hull);
                     Hulls[targetEntity] = hull;
+                    if (Shields.HasComponent(targetEntity))
+                        Shields[targetEntity] = shield;
                 }
                 else
                 {
@@ -151,7 +172,7 @@ namespace Space.Core.Combat
                     impact += (double3)(side * lateral + direction * random.NextFloat(0f, radius * 3f));
                 }
 
-                Shots.Add(new ShotEvent { From = from, To = impact, Hit = hit, Team = team });
+                Shots.Add(new ShotEvent { From = from, To = impact, Hit = hit, Team = team, Type = weapon.Type });
                 weapon.CooldownLeft = weapon.Cooldown * WeaponMath.CooldownFactor(weapon.Mode);
             }
         }

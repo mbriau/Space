@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Space.Authoring;
+using Space.Core.Combat;
 using UnityEditor;
 using UnityEngine;
 using Random = System.Random;
@@ -122,41 +123,87 @@ namespace Space.Editor.Placeholders
         /// <summary>First-pass combat numbers, to be balanced in playtests.</summary>
         static void ConfigureCombat(ShipAuthoring ship, string className)
         {
-            ShipAuthoring.WeaponSpec Gun(float range, float damage, float cooldown, float spreadDegrees, float projectileSpeed = 1000f) =>
-                new() { Range = range, Damage = damage, CooldownSeconds = cooldown, SpreadDegrees = spreadDegrees, ProjectileSpeed = projectileSpeed };
+            // Ion: drains shields only, costs energy. Laser: hull damage, costs energy, blocked by shields.
+            // Cannon: hull damage, free, blocked by shields. Missile: heavy, disrupts shields, few shots.
+            ShipAuthoring.WeaponSpec Ion(float range, float shieldDamage, float cooldown, float energy) => new()
+            {
+                Type = DamageType.Ion, Range = range, Damage = 0f, ShieldDamage = shieldDamage, EnergyCost = energy,
+                CooldownSeconds = cooldown, SpreadDegrees = 0.5f, ProjectileSpeed = 2000f,
+            };
+            ShipAuthoring.WeaponSpec Laser(float range, float damage, float cooldown, float energy) => new()
+            {
+                Type = DamageType.Laser, Range = range, Damage = damage, EnergyCost = energy,
+                CooldownSeconds = cooldown, SpreadDegrees = 0.4f, ProjectileSpeed = 3000f,
+            };
+            ShipAuthoring.WeaponSpec Cannon(float range, float damage, float cooldown, float spreadDegrees = 0.8f) => new()
+            {
+                Type = DamageType.Kinetic, Range = range, Damage = damage,
+                CooldownSeconds = cooldown, SpreadDegrees = spreadDegrees, ProjectileSpeed = 900f,
+            };
+            ShipAuthoring.WeaponSpec Missiles(int count, float damage, float shieldDamage) => new()
+            {
+                Type = DamageType.Missile, Range = 700f, Damage = damage, ShieldDamage = shieldDamage, Ammo = count,
+                OrderedTargetOnly = true, CooldownSeconds = 3f, SpreadDegrees = 0.2f, ProjectileSpeed = 2500f,
+            };
+            void Power(float energyMax, float regen, float shieldMax, float shieldRecharge, float upkeep)
+            {
+                ship.EnergyMax = energyMax;
+                ship.EnergyRegenPerSecond = regen;
+                ship.ShieldMax = shieldMax;
+                ship.ShieldRechargePerSecond = shieldRecharge;
+                ship.ShieldUpkeepPerSecond = upkeep;
+                ship.ShieldRechargeCostPerPoint = 1f;
+            }
 
             ship.Team = ShipAuthoring.TeamId.Player;
             ship.Weapons.Clear();
             switch (className)
             {
                 case "Drone":
+                    // No shield: cheap, fragile, fires cannons at bare hulls.
                     ship.Hull = 80f;
-                    ship.Weapons.Add(Gun(320f, 4f, 0.6f, 0.6f));
+                    Power(20f, 2f, 0f, 0f, 0f);
+                    ship.Weapons.Add(Cannon(320f, 5f, 0.6f, 0.6f));
                     break;
                 case "Cargo":
-                    // Very limited defence: one slow, imprecise turret.
+                    // Very limited defence: a strong shield, an ion turret to strip enemy shields, two missiles.
                     ship.Hull = 400f;
-                    ship.Weapons.Add(Gun(300f, 5f, 1.2f, 1.2f, 800f));
+                    Power(100f, 12f, 150f, 8f, 3f);
+                    ship.Weapons.Add(Ion(350f, 12f, 1f, 8f));
+                    ship.Weapons.Add(Missiles(2, 120f, 80f));
                     break;
                 case "PirateFighter":
                     ship.Team = ShipAuthoring.TeamId.Pirates;
                     ship.Hull = 120f;
-                    ship.Weapons.Add(Gun(350f, 6f, 0.8f, 0.8f));
+                    Power(60f, 8f, 60f, 5f, 2f);
+                    ship.Weapons.Add(Laser(350f, 6f, 0.8f, 4f));
+                    ship.Weapons.Add(Ion(300f, 8f, 1.2f, 6f));
                     break;
                 case "Corvette":
                     ship.Hull = 300f;
-                    ship.Weapons.Add(Gun(400f, 8f, 1f, 0.6f));
-                    ship.Weapons.Add(Gun(400f, 8f, 1f, 0.6f));
+                    Power(120f, 14f, 200f, 8f, 4f);
+                    ship.Weapons.Add(Ion(400f, 14f, 1f, 8f));
+                    ship.Weapons.Add(Laser(400f, 9f, 1f, 5f));
+                    ship.Weapons.Add(Cannon(400f, 8f, 1f, 0.6f));
                     break;
                 case "Frigate":
                     ship.Hull = 800f;
-                    for (var i = 0; i < 3; i++)
-                        ship.Weapons.Add(Gun(500f, 12f, 1.5f, 0.5f));
+                    Power(250f, 25f, 500f, 15f, 8f);
+                    ship.Weapons.Add(Ion(500f, 20f, 1.2f, 10f));
+                    ship.Weapons.Add(Laser(500f, 14f, 1.2f, 7f));
+                    ship.Weapons.Add(Cannon(500f, 12f, 1.5f, 0.5f));
+                    ship.Weapons.Add(Missiles(4, 200f, 150f));
                     break;
                 case "Capital":
                     ship.Hull = 3000f;
-                    for (var i = 0; i < 6; i++)
-                        ship.Weapons.Add(Gun(700f, 20f, 2f, 0.4f, 1200f));
+                    Power(800f, 70f, 2000f, 40f, 20f);
+                    for (var i = 0; i < 2; i++)
+                    {
+                        ship.Weapons.Add(Ion(700f, 30f, 1.5f, 15f));
+                        ship.Weapons.Add(Laser(700f, 20f, 1.5f, 10f));
+                        ship.Weapons.Add(Cannon(700f, 20f, 2f, 0.4f));
+                    }
+                    ship.Weapons.Add(Missiles(6, 300f, 250f));
                     break;
             }
         }

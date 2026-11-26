@@ -81,11 +81,22 @@ MonoBehaviour:
   TurnRateDegrees: 180
   Team: 0
   Hull: 80
+  EnergyMax: 20
+  EnergyRegenPerSecond: 2
+  ShieldMax: 0
+  ShieldRechargePerSecond: 0
+  ShieldUpkeepPerSecond: 0
+  ShieldRechargeCostPerPoint: 1
   Weapons:
-  - Range: 320
-    Damage: 4
+  - Type: 2
+    Range: 320
+    Damage: 5
+    ShieldDamage: 0
+    EnergyCost: 0
+    Ammo: -1
+    OrderedTargetOnly: 0
     CooldownSeconds: 0.6
-    ProjectileSpeed: 1000
+    ProjectileSpeed: 900
     SpreadDegrees: 0.6
     Mode: 0
 --- !u!1 &2065682464045045708

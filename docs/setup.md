@@ -60,10 +60,16 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
 - La simulation fait apparaître les vaisseaux au bon tick (`LevelSpawnSystem`) et décide de la victoire
   ou de la défaite (`LevelObjectiveSystem`). `LevelRunner` affiche l'objectif, verse la récompense et
   propose la suite ; la défaite propose une nouvelle partie.
-- Combat entièrement par ordres : chaque arme choisit sa cible (l'ennemi le plus proche à portée, ou la
-  cible imposée par clic droit) et tire selon la probabilité de toucher et son mode : normal, nerveux
-  (tire plus vite et plus souvent, rate davantage) ou prudent (ne tire que les coups presque sûrs).
-  Touche F pour changer de mode. Les tirs sont résolus avec un tirage déterministe par tick.
+- Combat entièrement par ordres : chaque arme choisit sa cible (l'ennemi le plus proche à portée qu'elle
+  peut abîmer, ou la cible imposée par clic droit) et tire selon la probabilité de toucher et son mode :
+  normal, nerveux (tire plus vite et plus souvent, rate davantage) ou prudent (ne tire que les coups
+  presque sûrs). Touche F pour changer de mode. Les tirs sont résolus avec un tirage déterministe par tick.
+- Énergie et boucliers : le réacteur se recharge en continu ; le bouclier consomme de l'énergie pour rester
+  en ligne et pour se recharger (touche B pour le couper et libérer l'énergie). Types d'armes :
+  ionique (énergie, ne vide que les boucliers), laser (énergie, dégâts à la coque), canon (sans énergie,
+  dégâts à la coque) — laser et canon sont entièrement bloqués par un bouclier actif — et missiles
+  (munitions limitées, gros dégâts, perturbent le bouclier ; tirés seulement sur une cible imposée).
+  Règles dans `DamageModel`, testées en EditMode.
 - Les drones tiennent leur place dans la formation du vaisseau principal quand ils n'ont pas d'ordre.
 
 ## Scène de test
