@@ -203,6 +203,10 @@ namespace Space.Core.Combat
     /// </summary>
     public struct ShotEvent : IBufferElementData
     {
+        /// <summary>The ship that fired and which of its weapons (presentation: the turret's muzzle).</summary>
+        public Entity Shooter;
+        public byte WeaponIndex;
+
         public double3 From;
 
         /// <summary>Where the projectile ends its flight (the target's predicted position, or beside it for a miss).</summary>

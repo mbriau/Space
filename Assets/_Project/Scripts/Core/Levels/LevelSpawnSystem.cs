@@ -11,6 +11,8 @@ namespace Space.Core.Levels
     /// <summary>
     /// Instantiates the ships of the running level when their delay has elapsed. Spawning happens in
     /// the simulation, on ticks, so a level unfolds the same way every time.
+    /// Tactical engagement: the flagship cruises on a fixed course; enemies drop out of hyperspace
+    /// alongside it and keep station there, sailing parallel at the same speed.
     /// </summary>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(StorePreviousTransformSystem))]
@@ -41,6 +43,10 @@ namespace Space.Core.Levels
             var library = SystemAPI.GetSingletonBuffer<ShipLibraryEntry>(true).ToNativeArray(Allocator.Temp);
             var spawns = em.GetBuffer<LevelSpawn>(levelEntity).ToNativeArray(Allocator.Temp);
             var changed = false;
+            var enemyIndex = 0;
+            foreach (var spawn in spawns)
+                if (spawn.Role == SpawnRole.Enemy && spawn.Done)
+                    enemyIndex++;
 
             // Flagship first, so escorts spawned on the same tick can form up on it.
             for (var pass = 0; pass < 2; pass++)
@@ -54,7 +60,10 @@ namespace Space.Core.Levels
 
                     var prefab = Find(library, spawn.Ship);
                     if (prefab != Entity.Null)
-                        Spawn(em, prefab, spawn, tick);
+                        Spawn(em, prefab, spawn, tick, level.CruiseSpeed > 0f ? level.CruiseSpeed : Engagement.DefaultCruiseSpeed,
+                              spawn.Role == SpawnRole.Enemy ? enemyIndex : 0);
+                    if (spawn.Role == SpawnRole.Enemy)
+                        enemyIndex++;
 
                     spawn.Done = true;
                     spawns[i] = spawn;
@@ -74,7 +83,15 @@ namespace Space.Core.Levels
             return Entity.Null;
         }
 
-        void Spawn(EntityManager em, Entity prefab, LevelSpawn spawn, uint tick)
+        Entity Flagship()
+        {
+            if (_flagships.IsEmpty)
+                return Entity.Null;
+            using var flagships = _flagships.ToEntityArray(Allocator.Temp);
+            return flagships[0];
+        }
+
+        void Spawn(EntityManager em, Entity prefab, LevelSpawn spawn, uint tick, float cruiseSpeed, int enemyIndex)
         {
             var entity = em.Instantiate(prefab);
             var position = spawn.Position;
@@ -84,8 +101,15 @@ namespace Space.Core.Levels
             switch (spawn.Role)
             {
                 case SpawnRole.Flagship:
+                {
                     em.AddComponent<PlayerFlagship>(entity);
+                    // Fixed course, straight ahead, already at cruise speed.
+                    var heading = new float3(0f, 0f, 1f);
+                    rotation = quaternion.LookRotationSafe(heading, math.up());
+                    arrivalVelocity = heading * cruiseSpeed;
+                    em.AddComponentData(entity, new CruiseCourse { Heading = heading, Speed = cruiseSpeed, LaneOrigin = position });
                     break;
+                }
 
                 case SpawnRole.Escort:
                 {
@@ -100,6 +124,7 @@ namespace Space.Core.Levels
                         var leaderRotation = em.GetComponentData<SimRotation>(leader).Value;
                         rotation = leaderRotation;
                         position = em.GetComponentData<SimPosition>(leader).Value + (double3)math.mul(leaderRotation, spawn.Offset);
+                        arrivalVelocity = em.GetComponentData<ShipVelocity>(leader).Linear;
                     }
                     var slot = new FormationSlot { Leader = leader, Offset = spawn.Offset };
                     if (em.HasComponent<FormationSlot>(entity))
@@ -110,17 +135,35 @@ namespace Space.Core.Levels
                 }
 
                 case SpawnRole.Enemy:
+                {
                     em.AddComponent<PirateAI>(entity);
-                    // Drops out of hyperspace facing the level origin, where the player starts, still moving.
-                    var toOrigin = -(float3)spawn.Position;
-                    if (math.lengthsq(toOrigin) > 1e-4f)
+                    // Drops out of hyperspace alongside the flagship, on a parallel course at the same
+                    // speed, and keeps that station (a formation slot on the flagship).
+                    var longestRange = 0f;
+                    if (em.HasBuffer<Weapon>(entity))
+                        foreach (var weapon in em.GetBuffer<Weapon>(entity))
+                            longestRange = math.max(longestRange, weapon.Range);
+                    var distance = Engagement.StationDistance(spawn.Distance, longestRange);
+                    var station = Engagement.EnemyStation(enemyIndex, distance, spawn.AngleDegrees);
+                    var leader = Flagship();
+                    if (leader != Entity.Null)
                     {
-                        var heading = math.normalize(toOrigin);
-                        rotation = quaternion.LookRotationSafe(heading, math.up());
-                        arrivalVelocity = heading * em.GetComponentData<ShipMovementStats>(entity).MaxSpeed;
+                        rotation = em.GetComponentData<SimRotation>(leader).Value;
+                        position = em.GetComponentData<SimPosition>(leader).Value + (double3)math.mul(rotation, station);
+                        arrivalVelocity = em.GetComponentData<ShipVelocity>(leader).Linear;
                     }
+                    else
+                    {
+                        position = (double3)station;
+                    }
+                    var slot = new FormationSlot { Leader = leader, Offset = station };
+                    if (em.HasComponent<FormationSlot>(entity))
+                        em.SetComponentData(entity, slot);
+                    else
+                        em.AddComponentData(entity, slot);
                     em.AddComponentData(entity, new HyperspaceArrival { Tick = tick });
                     break;
+                }
             }
 
             em.SetComponentData(entity, new SimPosition { Value = position });

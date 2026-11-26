@@ -29,6 +29,9 @@ namespace Space.Core.Levels
 
         /// <summary>Seed of every random draw in the level (shots...), so a level can be replayed exactly.</summary>
         public uint RunSeed;
+
+        /// <summary>Speed at which the flagship cruises along its fixed course (m/s).</summary>
+        public float CruiseSpeed;
     }
 
     public enum SpawnRole : byte
@@ -50,8 +53,12 @@ namespace Space.Core.Levels
         public SpawnRole Role;
         public uint DelayTicks;
 
-        /// <summary>Spawn position (Flagship, Enemy), relative to the level origin.</summary>
+        /// <summary>Spawn position of the flagship, relative to the level origin.</summary>
         public double3 Position;
+
+        /// <summary>Enemy: authored distance and angle (the side it comes from).</summary>
+        public float Distance;
+        public float AngleDegrees;
 
         /// <summary>Formation offset in the flagship's frame (Escort).</summary>
         public float3 Offset;

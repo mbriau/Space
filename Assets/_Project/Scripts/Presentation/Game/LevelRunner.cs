@@ -4,6 +4,8 @@ using Space.Core.Equipment;
 using Space.Core.Levels;
 using Space.Core.Ships;
 using Space.Core.Time;
+using Space.Presentation.Controls;
+using Space.Presentation.Rendering;
 using Space.Presentation.UI;
 using Unity.Collections;
 using Unity.Entities;
@@ -78,6 +80,14 @@ namespace Space.Presentation.Game
             if (_menus == null)
                 _menus = gameObject.AddComponent<EquipmentMenus>();
             _menus.Runner = this;
+
+            // Tactical presentation: turrets on the decks, dust drifting past the camera.
+            if (FindAnyObjectByType<TurretPresenter>() == null)
+                gameObject.AddComponent<TurretPresenter>();
+            var rig = FindAnyObjectByType<ShipCameraRig>();
+            var cameraObject = rig != null ? rig.gameObject : Camera.main != null ? Camera.main.gameObject : null;
+            if (cameraObject != null && cameraObject.GetComponent<SpaceDust>() == null)
+                cameraObject.AddComponent<SpaceDust>();
         }
 
         bool EnsureWorld()
@@ -208,6 +218,7 @@ namespace Space.Presentation.Game
                 EndTick = startTick + (uint)math.round(level.SurviveSeconds * ticksPerSecond),
                 WinWhenEnemiesDestroyed = level.WinWhenEnemiesDestroyed,
                 RunSeed = math.hash(new uint3(BaseSeed, (uint)_run.RunIndex, (uint)_run.LevelsCompleted)),
+                CruiseSpeed = level.CruiseSpeed > 0f ? level.CruiseSpeed : Engagement.DefaultCruiseSpeed,
             });
 
             var spawns = em.GetBuffer<LevelSpawn>(levelEntity);
@@ -226,13 +237,13 @@ namespace Space.Presentation.Game
             }
             foreach (var enemy in level.Enemies)
             {
-                var angle = math.radians(enemy.AngleDegrees);
                 spawns.Add(new LevelSpawn
                 {
                     Ship = enemy.Ship,
                     Role = SpawnRole.Enemy,
                     DelayTicks = (uint)math.round(enemy.DelaySeconds * ticksPerSecond),
-                    Position = new double3(math.sin(angle) * enemy.Distance, 0.0, math.cos(angle) * enemy.Distance),
+                    Distance = enemy.Distance,
+                    AngleDegrees = enemy.AngleDegrees,
                 });
             }
 

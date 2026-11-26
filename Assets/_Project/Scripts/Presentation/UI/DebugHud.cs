@@ -67,7 +67,7 @@ namespace Space.Presentation.UI
             }
 
             GUI.Label(new Rect(16, Screen.height - 48, Screen.width - 32, 22),
-                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter) ou imposer une cible   " +
+                "Clic gauche / Tab : sélectionner   Clic droit sur un ennemi : imposer une cible   V : caméra libre / tactique   " +
                 "F : mode de tir   Puissance : Q W E R (Maj : retirer)");
             GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
                 "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse   " +
