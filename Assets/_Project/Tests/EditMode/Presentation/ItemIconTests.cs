@@ -68,8 +68,22 @@ namespace Space.Presentation.Tests
                     WritePng(Path.Combine(PreviewFolder, items[k].Id + ".png"), pixels, size, size);
                 }
             }
-            WritePng(Path.Combine(PreviewFolder, "_planche.png"), sheet, width, height);
-            Assert.IsTrue(File.Exists(Path.Combine(PreviewFolder, "_planche.png")));
+            var sheetPath = Path.Combine(PreviewFolder, "_planche.png");
+            WritePng(sheetPath, sheet, width, height);
+            Assert.IsTrue(File.Exists(sheetPath));
+
+            // On the CI, also print the sheet in the log (base64, in chunks), readable without
+            // downloading the artifacts.
+            if (System.Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ||
+                System.Environment.GetEnvironmentVariable("CI") == "true" ||
+                Directory.Exists("/github/workspace"))
+            {
+                var base64 = System.Convert.ToBase64String(File.ReadAllBytes(sheetPath));
+                const int chunk = 6000;
+                for (int i = 0, n = 0; i < base64.Length; i += chunk, n++)
+                    Debug.Log($"ICONSHEET {n:000} {base64.Substring(i, System.Math.Min(chunk, base64.Length - i))}");
+                Debug.Log("ICONSHEET END");
+            }
         }
 
         static void WritePng(string path, Color32[] pixels, int width, int height)
