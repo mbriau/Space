@@ -109,6 +109,8 @@ namespace Space.Editor.Placeholders
                 ship.Acceleration = shipClass.Acceleration;
                 ship.TurnRateDegrees = shipClass.TurnRate;
                 ConfigureCombat(ship, shipClass.Name);
+                if (ship.ShieldMax > 0f)
+                    AddShieldBubble(root, meshes[0].bounds);
 
                 PrefabUtility.SaveAsPrefabAsset(root, $"{Root}/Prefabs/{shipClass.Name}.prefab");
             }
@@ -118,6 +120,52 @@ namespace Space.Editor.Placeholders
             }
 
             return triangleCounts;
+        }
+
+        /// <summary>
+        /// Shield bubble: an ellipsoid slightly larger than the hull, with a transparent additive
+        /// material whose opacity is driven per instance from the shield state.
+        /// </summary>
+        static void AddShieldBubble(GameObject root, Bounds hullBounds)
+        {
+            var bubble = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            bubble.name = "Shield";
+            Object.DestroyImmediate(bubble.GetComponent<Collider>());
+            bubble.transform.SetParent(root.transform, false);
+            bubble.transform.localPosition = hullBounds.center;
+            bubble.transform.localScale = hullBounds.size * 1.25f + Vector3.one * 2f;
+
+            var renderer = bubble.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = GetOrCreateShieldMaterial();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            bubble.AddComponent<ShieldVisualAuthoring>();
+        }
+
+        static Material GetOrCreateShieldMaterial()
+        {
+            var path = $"{Root}/Materials/ShieldBubble.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null)
+                return material;
+
+            material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { name = "ShieldBubble" };
+            // Transparent, additive: the bubble glows over the ship without hiding it.
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 2f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_ZWrite", 0f);
+            material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Back);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.SetColor("_BaseColor", new Color(0.35f, 0.65f, 1f, 0.15f));
+            material.enableInstancing = true;
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         /// <summary>First-pass combat numbers, to be balanced in playtests.</summary>

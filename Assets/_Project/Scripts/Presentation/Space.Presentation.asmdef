@@ -4,6 +4,7 @@
     "references": [
         "Space.Core",
         "Unity.Entities",
+        "Unity.Entities.Graphics",
         "Unity.Mathematics",
         "Unity.Burst",
         "Unity.Collections",

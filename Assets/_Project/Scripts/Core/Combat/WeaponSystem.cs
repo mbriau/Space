@@ -165,6 +165,8 @@ namespace Space.Core.Combat
                     var targetEntity = Entities[target];
                     var hull = Hulls[targetEntity];
                     var shield = Shields.HasComponent(targetEntity) ? Shields[targetEntity] : default;
+                    if (shield.IsUp)
+                        shield.LastHitTick = Tick;
                     DamageModel.ApplyHit(weapon, ref shield, ref hull);
                     Hulls[targetEntity] = hull;
                     if (Shields.HasComponent(targetEntity))

@@ -52,6 +52,9 @@ namespace Space.Core.Combat
         /// <summary>Runtime: the shield is online and powered this tick.</summary>
         public bool Active;
 
+        /// <summary>Runtime: tick of the last hit taken while the shield was up (presentation flash).</summary>
+        public uint LastHitTick;
+
         /// <summary>The shield blocks physical damage right now.</summary>
         public bool IsUp => Active && Current > 0f;
     }

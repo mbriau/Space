@@ -3,7 +3,9 @@
     "rootNamespace": "Space.Authoring",
     "references": [
         "Space.Core",
+        "Space.Presentation",
         "Unity.Entities",
+        "Unity.Entities.Graphics",
         "Unity.Collections",
         "Unity.Entities.Hybrid",
         "Unity.Mathematics",
