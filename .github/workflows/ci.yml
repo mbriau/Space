@@ -48,6 +48,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: 6000.6.10f1
+          # GameCI v4 vise encore les images « -3 » ; seules les « -4 » existent pour Unity 6.6.
+          customImage: unityci/editor:ubuntu-6000.6.10f1-linux-il2cpp-4
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Résultats des tests EditMode
