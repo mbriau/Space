@@ -54,3 +54,5 @@ Thumbs.db
 
 # Historique et originaux des generations Unity AI (non necessaires au projet)
 /GeneratedAssets/
+# Outil Rhubarb Lip Sync (telecharge, non versionne)
+/tools/rhubarb/
