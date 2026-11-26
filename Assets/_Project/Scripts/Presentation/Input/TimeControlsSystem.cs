@@ -1,4 +1,5 @@
 using Space.Core.Time;
+using Space.Presentation.UI;
 using Unity.Entities;
 using UnityEngine.InputSystem;
 
@@ -20,7 +21,7 @@ namespace Space.Presentation.Input
         protected override void OnUpdate()
         {
             var keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (keyboard == null || UiFocus.MenuOpen)
                 return;
 
             var time = SystemAPI.GetSingletonRW<SimulationTime>();

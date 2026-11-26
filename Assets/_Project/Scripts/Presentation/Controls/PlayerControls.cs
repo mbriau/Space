@@ -3,6 +3,7 @@ using Space.Core.Orders;
 using Space.Core.Ships;
 using Space.Core.Time;
 using Space.Presentation.Rendering;
+using Space.Presentation.UI;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -99,6 +100,10 @@ namespace Space.Presentation.Controls
 
             var em = _world.EntityManager;
             TrackMainShip(em);
+
+            // A menu has the focus: no selection, orders or power changes behind it.
+            if (UiFocus.MenuOpen)
+                return;
 
             var keyboard = Keyboard.current;
             if (keyboard != null)
