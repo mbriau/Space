@@ -95,11 +95,10 @@ namespace Space.Presentation.UI
             GUILayout.Label($"Demandée à plein régime : {demand} unités", MenuStyles.Text);
             GUI.contentColor = previous;
             PowerBar("Bouclier", grid.ShieldCapacity, grid.Reactor);
-            PowerBar("Armes à énergie", grid.EnergyWeaponsCapacity, grid.Reactor);
-            PowerBar("Armes physiques", grid.PhysicalWeaponsCapacity, grid.Reactor);
+            PowerBar("Armes", stats.WeaponsDemand, grid.Reactor);
             PowerBar("Moteurs", grid.EnginesCapacity, grid.Reactor);
             if (demand > grid.Reactor)
-                GUILayout.Label("Le réacteur ne peut pas tout alimenter à la fois : c'est à toi de répartir la puissance en combat (Q W E R).", MenuStyles.Muted);
+                GUILayout.Label("Le réacteur ne peut pas tout alimenter à la fois : en combat, à toi de choisir quelles armes mettre sous tension et de répartir le reste (Q, R).", MenuStyles.Muted);
 
             GUILayout.Space(8);
             GUILayout.Label("Armement", MenuStyles.Heading);
@@ -118,7 +117,10 @@ namespace Space.Presentation.UI
                 }
                 var dps = w.Type == DamageType.Ion ? $"{LoadoutMath.ShieldDamagePerSecond(w):0.#} bouclier/s"
                     : $"{LoadoutMath.ShieldDamagePerSecond(w):0.#} bouclier/s, {LoadoutMath.HullDamagePerSecond(w):0.#} coque/s";
-                GUILayout.Label($"{WeaponKind(w.Type)} · {w.Range:0} m · {dps} · munitions {ammo}", MenuStyles.Small);
+                var power = w.CanSupercharge
+                    ? $"{w.PowerDraw} u. (surcharge +{w.SuperchargeDraw} u., dégâts ×{w.SuperchargeDamageFactor:0.#})"
+                    : $"{w.PowerDraw} u.";
+                GUILayout.Label($"{WeaponKind(w.Type)} · {w.Range:0} m · {dps} · munitions {ammo} · {power}", MenuStyles.Small);
             }
             if (stats.Drones.Count > 0)
             {

@@ -70,7 +70,7 @@ namespace Space.Presentation.UI
 
             GUI.Label(new Rect(16, Screen.height - 48, Screen.width - 32, 22),
                 "Clic gauche / Tab : sélectionner   Clic droit sur un ennemi : imposer une cible   V : caméra libre / tactique   " +
-                "F : mode de tir   Puissance : Q W E R (Maj : retirer)");
+                "Bouclier Q / moteurs R (Maj : retirer) · armes : sur leurs cartes");
             GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
                 "Molette : zoom   Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse   " +
                 "I : vaisseau   C : catalogue");
@@ -87,6 +87,10 @@ namespace Space.Presentation.UI
                 }
             }
 
+            // Weapons of the player's ship, bottom left; reactor power, bottom right.
+            const float powerWidth = 330f;
+            WeaponPanel.Draw(Controls, new Vector2(16, Screen.height - 60), Screen.width - 48 - powerWidth);
+
             if (Controls == null || !Controls.TryGetSelection(out var selection))
                 return;
 
@@ -98,33 +102,40 @@ namespace Space.Presentation.UI
                        $"Coque : {selection.Hull:0} / {selection.HullMax:0}\n" +
                        $"Bouclier : {shieldText}\n" +
                        $"Vitesse : {selection.Speed:0.0} m/s · ordres : {selection.OrderCount}";
-            if (selection.WeaponCount > 0)
-                text += $"\n{selection.WeaponSummary}\nTir {FireModeLabel(selection.FireMode)}" +
-                        (selection.HasAttackTarget ? " · cible imposée" : "");
-            var lines = 5 + selection.WeaponCount;
-            var infoHeight = 18 * lines + 16;
-            var infoRect = new Rect(16, Screen.height - 64 - infoHeight, 320, infoHeight);
+            if (selection.HasAttackTarget)
+                text += "\nCible imposée";
+            var lines = selection.HasAttackTarget ? 6 : 5;
+            var infoRect = new Rect(16, 70, 300, 18 * lines + 16);
             GUI.Box(infoRect, text, _panel);
+            UiFocus.AddHudRect(infoRect);
 
             if (selection.HasPower)
-                DrawPowerPanel(selection, new Rect(Screen.width - 16 - 330, Screen.height - 64 - 176, 330, 176));
+            {
+                var powerRect = new Rect(Screen.width - 16 - powerWidth, Screen.height - 60 - PowerPanelHeight, powerWidth, PowerPanelHeight);
+                DrawPowerPanel(selection, powerRect);
+                UiFocus.AddHudRect(powerRect);
+            }
 
             DrawBrackets(selection.RenderPosition, selection.Radius, MarkerColor);
             if (selection.HasDestination)
                 DrawBrackets(selection.DestinationRenderPosition, 0f, DestinationColor);
         }
 
-        static readonly (PowerSystem System, string Label, string Key)[] PowerRows =
+        static readonly (PowerSystem System, string Label, string Key, Color Color)[] PowerRows =
         {
-            (PowerSystem.Shield, "Bouclier", "Q"),
-            (PowerSystem.EnergyWeapons, "Armes à énergie", "W"),
-            (PowerSystem.PhysicalWeapons, "Armes physiques", "E"),
-            (PowerSystem.Engines, "Moteurs", "R"),
+            (PowerSystem.Shield, "Bouclier", "Q", new Color(0.35f, 0.7f, 1f)),
+            (PowerSystem.Engines, "Moteurs", "R", new Color(0.4f, 0.95f, 0.6f)),
         };
 
+        static readonly Color WeaponsPowerColor = new(1f, 0.65f, 0.25f);
+
+        /// <summary>Height of the power panel.</summary>
+        const float PowerPanelHeight = 150f;
+
         /// <summary>
-        /// Reactor output and the power of each subsystem as rows of cells; − and + buttons move one
-        /// unit (enemy ships are shown read-only).
+        /// Reactor output as cells coloured by consumer (shield, weapons, engines, free), then the
+        /// shield and the engines as rows of cells with − and + buttons (enemy ships are shown
+        /// read-only). Weapons are switched on and off on their cards.
         /// </summary>
         void DrawPowerPanel(PlayerControls.SelectionInfo selection, Rect area)
         {
@@ -136,11 +147,26 @@ namespace Space.Presentation.UI
             var x = area.x + 10;
             var y = area.y + 8;
             GUI.Label(new Rect(x, y, area.width - 20, 22),
-                $"Réacteur : {grid.Allocated} / {grid.Reactor} utilisés · {grid.Free} libre(s)");
-            DrawCells(new Rect(x, y + 22, area.width - 20, 10), grid.Reactor, grid.Allocated, new Color(1f, 0.8f, 0.3f));
-            y += 42;
+                $"Réacteur : {grid.Allocated} / {grid.Reactor} utilisés · {grid.Free} libre{(grid.Free > 1 ? "s" : "")}");
+            DrawReactorCells(new Rect(x, y + 24, area.width - 20, 14), grid);
+            y += 44;
 
-            foreach (var (system, label, key) in PowerRows)
+            // Legend of the reactor cells.
+            var legendX = x;
+            foreach (var (label, value, color) in new[]
+                     {
+                         ("Bouclier", grid.Shield, PowerRows[0].Color), ("Armes", grid.Weapons, WeaponsPowerColor),
+                         ("Moteurs", grid.Engines, PowerRows[1].Color),
+                     })
+            {
+                FillRect(new Rect(legendX, y + 6, 10, 10), color);
+                GUI.Label(new Rect(legendX + 14, y, 90, 22), $"{label} {value}");
+                legendX += 100;
+            }
+            GUI.color = Color.white;
+            y += 30;
+
+            foreach (var (system, label, key, color) in PowerRows)
             {
                 var capacity = grid.Capacity(system);
                 if (capacity == 0)
@@ -154,9 +180,28 @@ namespace Space.Presentation.UI
                     if (GUI.Button(new Rect(x + 286, y + 1, 22, 20), "+"))
                         Controls.ChangePower(system, +1);
                 }
-                DrawCells(new Rect(x + 176, y + 5, 106, 12), capacity, grid.Get(system), new Color(0.35f, 0.8f, 1f));
+                DrawCells(new Rect(x + 176, y + 5, 106, 12), capacity, grid.Get(system), color);
                 y += 28;
             }
+        }
+
+        /// <summary>One cell per reactor unit: shield, then weapons, then engines, then the free units.</summary>
+        static void DrawReactorCells(Rect area, PowerGrid grid)
+        {
+            var count = (int)grid.Reactor;
+            if (count <= 0)
+                return;
+            const float gap = 3f;
+            var width = (area.width - gap * (count - 1)) / count;
+            for (var i = 0; i < count; i++)
+            {
+                var color = i < grid.Shield ? PowerRows[0].Color
+                    : i < grid.Shield + grid.Weapons ? WeaponsPowerColor
+                    : i < grid.Allocated ? PowerRows[1].Color
+                    : new Color(1f, 1f, 1f, 0.12f);
+                FillRect(new Rect(area.x + i * (width + gap), area.y, width, area.height), color);
+            }
+            GUI.color = Color.white;
         }
 
         /// <summary>A row of <paramref name="count"/> cells, the first <paramref name="filled"/> lit.</summary>
@@ -174,14 +219,16 @@ namespace Space.Presentation.UI
             GUI.color = Color.white;
         }
 
-        static string FireModeLabel(FireMode mode) => mode switch
-        {
-            FireMode.TriggerHappy => "nerveux",
-            FireMode.Conservative => "prudent",
-            _ => "normal",
-        };
+        static readonly Color ShieldColor = new(0.35f, 0.7f, 1f);
+        static readonly Color ShieldDownColor = new(0.6f, 0.62f, 0.7f);
+        static readonly Color PlayerHullColor = new(0.3f, 1f, 0.5f);
+        static readonly Color EnemyHullColor = new(1f, 0.35f, 0.25f);
 
-        /// <summary>A small hull bar above every ship: green for the player's ships, red for enemies.</summary>
+        /// <summary>
+        /// Shield and hull bars above every ship, sized with the ship on screen: the shield (blue) over
+        /// the hull (green for the player's ships, red for enemies). A broken shield blinks grey, an
+        /// unpowered one shows an empty frame, and a hull under a third blinks.
+        /// </summary>
         void DrawHullBars()
         {
             if (_world == null || !_world.IsCreated)
@@ -200,6 +247,8 @@ namespace Space.Presentation.UI
             using var transforms = _hullQuery.ToComponentDataArray<LocalToWorld>(Allocator.Temp);
             using var radii = _hullQuery.ToComponentDataArray<ShipRadius>(Allocator.Temp);
             var pixelsPerMetreAtUnitDistance = Screen.height * 0.5f / Mathf.Tan(_camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            var tick = TryGetTime(out var time) ? time.Tick : 0u;
+            var blinkOn = Mathf.Repeat(Time.unscaledTime, 0.6f) < 0.35f;
 
             for (var i = 0; i < hulls.Length; i++)
             {
@@ -208,26 +257,51 @@ namespace Space.Presentation.UI
                     continue;
 
                 var radiusPixels = Mathf.Max(12f, radii[i].Value * pixelsPerMetreAtUnitDistance / screen.z);
-                const float width = 36f;
-                const float height = 4f;
-                var x = screen.x - width * 0.5f;
-                var y = Screen.height - screen.y - radiusPixels - 10f;
-                var fraction = hulls[i].Max > 0f ? Mathf.Clamp01(hulls[i].Current / hulls[i].Max) : 0f;
-
-                GUI.color = new Color(0f, 0f, 0f, 0.6f);
-                GUI.DrawTexture(new Rect(x - 1, y - 1, width + 2, height + 2), Texture2D.whiteTexture);
-                GUI.color = teams[i].Value == Team.Player ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.35f, 0.25f);
-                GUI.DrawTexture(new Rect(x, y, width * fraction, height), Texture2D.whiteTexture);
-
-                // Shield bar just above the hull bar.
+                var width = Mathf.Clamp(radiusPixels * 2.2f, 90f, 170f);
+                const float hullHeight = 9f;
+                const float shieldHeight = 7f;
+                const float pad = 2f;
                 var shield = shields[i];
-                if (shield.Max > 0f && shield.IsUp)
+                var hasShield = shield.Max > 0f;
+                var total = hullHeight + (hasShield ? shieldHeight + pad : 0f);
+
+                var x = screen.x - width * 0.5f;
+                var bottom = Screen.height - screen.y - radiusPixels - 12f;
+                var top = bottom - total;
+
+                // Dark backing so the bars read over the stars and the ship.
+                FillRect(new Rect(x - pad, top - pad, width + 2 * pad, total + 2 * pad), new Color(0f, 0f, 0f, 0.65f));
+
+                var y = top;
+                if (hasShield)
                 {
-                    GUI.color = new Color(0.4f, 0.65f, 1f);
-                    GUI.DrawTexture(new Rect(x, y - height - 2f, width * Mathf.Clamp01(shield.Current / shield.Max), height), Texture2D.whiteTexture);
+                    var bar = new Rect(x, y, width, shieldHeight);
+                    FillRect(bar, new Color(ShieldColor.r, ShieldColor.g, ShieldColor.b, 0.15f));
+                    if (shield.BrokenUntilTick > tick)
+                    {
+                        if (blinkOn)
+                            FillRect(bar, ShieldDownColor);
+                    }
+                    else if (shield.IsUp)
+                    {
+                        FillRect(new Rect(x, y, width * Mathf.Clamp01(shield.Current / shield.Max), shieldHeight), ShieldColor);
+                    }
+                    y += shieldHeight + pad;
                 }
+
+                var fraction = hulls[i].Max > 0f ? Mathf.Clamp01(hulls[i].Current / hulls[i].Max) : 0f;
+                var hullColor = teams[i].Value == Team.Player ? PlayerHullColor : EnemyHullColor;
+                FillRect(new Rect(x, y, width, hullHeight), new Color(hullColor.r, hullColor.g, hullColor.b, 0.15f));
+                if (fraction > 1f / 3f || blinkOn)
+                    FillRect(new Rect(x, y, width * fraction, hullHeight), hullColor);
             }
             GUI.color = Color.white;
+        }
+
+        static void FillRect(Rect rect, Color color)
+        {
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
         }
 
         /// <summary>Square brackets around a world point, sized from its radius (minimum 12 px).</summary>

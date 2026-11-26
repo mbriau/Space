@@ -19,66 +19,47 @@ namespace Space.Core.Combat
         public float Max;
     }
 
-    /// <summary>Ship subsystems that draw power from the reactor.</summary>
+    /// <summary>Ship subsystems whose power is set unit by unit (weapons are switched on or off one by one).</summary>
     public enum PowerSystem : byte
     {
         Shield = 0,
-        EnergyWeapons = 1,
-        PhysicalWeapons = 2,
-        Engines = 3,
+        Engines = 1,
     }
 
     /// <summary>
-    /// The reactor produces a fixed number of power units that the player (or the AI) distributes
-    /// between subsystems. Each subsystem works in proportion to the power it receives, up to its
-    /// capacity: power is the main strategic lever of a fight.
+    /// The reactor produces a fixed number of power units that the player (or the AI) distributes.
+    /// The shield and the engines work in proportion to the units they receive, up to their capacity.
+    /// Each weapon draws its whole cost while it is powered, or nothing (<see cref="WeaponPower"/>):
+    /// power is the main strategic lever of a fight.
     /// </summary>
     public struct PowerGrid : IComponentData
     {
-        public const int SystemCount = 4;
-
         /// <summary>Total power units produced by the reactor.</summary>
         public byte Reactor;
 
         public byte Shield;
-        public byte EnergyWeapons;
-        public byte PhysicalWeapons;
         public byte Engines;
 
+        /// <summary>Units drawn by the powered weapons (kept in step by <see cref="WeaponPower"/>).</summary>
+        public byte Weapons;
+
         public byte ShieldCapacity;
-        public byte EnergyWeaponsCapacity;
-        public byte PhysicalWeaponsCapacity;
         public byte EnginesCapacity;
 
-        public int Allocated => Shield + EnergyWeapons + PhysicalWeapons + Engines;
+        public int Allocated => Shield + Engines + Weapons;
         public int Free => Reactor - Allocated;
 
-        public int Get(PowerSystem system) => system switch
-        {
-            PowerSystem.Shield => Shield,
-            PowerSystem.EnergyWeapons => EnergyWeapons,
-            PowerSystem.PhysicalWeapons => PhysicalWeapons,
-            _ => Engines,
-        };
+        public int Get(PowerSystem system) => system == PowerSystem.Shield ? Shield : Engines;
 
-        public int Capacity(PowerSystem system) => system switch
-        {
-            PowerSystem.Shield => ShieldCapacity,
-            PowerSystem.EnergyWeapons => EnergyWeaponsCapacity,
-            PowerSystem.PhysicalWeapons => PhysicalWeaponsCapacity,
-            _ => EnginesCapacity,
-        };
+        public int Capacity(PowerSystem system) => system == PowerSystem.Shield ? ShieldCapacity : EnginesCapacity;
 
         public void Set(PowerSystem system, int value)
         {
             var clamped = (byte)math.clamp(value, 0, Capacity(system));
-            switch (system)
-            {
-                case PowerSystem.Shield: Shield = clamped; break;
-                case PowerSystem.EnergyWeapons: EnergyWeapons = clamped; break;
-                case PowerSystem.PhysicalWeapons: PhysicalWeapons = clamped; break;
-                default: Engines = clamped; break;
-            }
+            if (system == PowerSystem.Shield)
+                Shield = clamped;
+            else
+                Engines = clamped;
         }
 
         /// <summary>How well a subsystem works, from 0 (unpowered) to 1 (full capacity).</summary>
@@ -146,10 +127,25 @@ namespace Space.Core.Combat
         Conservative = 2,
     }
 
+    /// <summary>Who decides when a weapon fires.</summary>
+    public enum WeaponControl : byte
+    {
+        /// <summary>Fires on its own whenever its <see cref="FireMode"/> allows it.</summary>
+        Auto = 0,
+
+        /// <summary>Holds fire: no target, no shot (it keeps charging while powered).</summary>
+        Off = 1,
+
+        /// <summary>Fires once each time it receives a fire order (<see cref="Weapon.FireRequested"/>).</summary>
+        Manual = 2,
+    }
+
     /// <summary>
     /// One weapon mounted on a ship. Each weapon picks its own target automatically, unless the
-    /// ship has an <see cref="AttackTarget"/> order. It charges in proportion to the power of its
-    /// subsystem (energy or physical weapons) and does not fire without power.
+    /// ship has an <see cref="AttackTarget"/> order. Powered, it draws <see cref="PowerDraw"/> units
+    /// from the reactor and charges at full speed; unpowered, it draws nothing and neither charges
+    /// nor fires. Some weapons can be supercharged: more power for heavier shots. The player (or
+    /// the AI) also holds its fire or takes manual control of it.
     /// </summary>
     [InternalBufferCapacity(2)]
     public struct Weapon : IBufferElementData
@@ -179,7 +175,28 @@ namespace Space.Core.Combat
         public float Spread;
 
         public FireMode Mode;
-        public bool Enabled;
+        public WeaponControl Control;
+
+        /// <summary>Power units the weapon draws from the reactor while it is powered.</summary>
+        public byte PowerDraw;
+
+        /// <summary>Extra units drawn when supercharged; 0 = the weapon cannot be supercharged.</summary>
+        public byte SuperchargeDraw;
+
+        /// <summary>Damage multiplier (hull and shield) of a supercharged shot.</summary>
+        public float SuperchargeDamageFactor;
+
+        /// <summary>Draws its power from the reactor: it charges and can fire. Change it through <see cref="WeaponPower"/>.</summary>
+        public bool Powered;
+
+        /// <summary>Draws its extra power for heavier shots. Change it through <see cref="WeaponPower"/>.</summary>
+        public bool Supercharged;
+
+        /// <summary>
+        /// Order to fire once, for a weapon under <see cref="WeaponControl.Manual"/> control. Read at the
+        /// next simulation tick, then cleared whether the weapon could fire or not.
+        /// </summary>
+        public bool FireRequested;
 
         /// <summary>Runtime: seconds of full-power charging left before the next shot.</summary>
         public float CooldownLeft;
@@ -187,8 +204,10 @@ namespace Space.Core.Combat
         /// <summary>Runtime: what the weapon is aiming at (for presentation).</summary>
         public Entity CurrentTarget;
 
-        public PowerSystem PowerSource =>
-            Type == DamageType.Ion || Type == DamageType.Laser ? PowerSystem.EnergyWeapons : PowerSystem.PhysicalWeapons;
+        /// <summary>Ion and laser: energy weapons, unlimited shots. Cannon and missile: physical, with ammunition.</summary>
+        public bool IsEnergy => Type == DamageType.Ion || Type == DamageType.Laser;
+
+        public bool CanSupercharge => SuperchargeDraw > 0;
     }
 
     /// <summary>Player or AI order: every weapon of the ship focuses on this target when it can.</summary>

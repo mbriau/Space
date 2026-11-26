@@ -46,6 +46,38 @@ namespace Space.Core.Combat
 
         public static bool ShouldFire(FireMode mode, float hitProbability) => hitProbability >= FireThreshold(mode);
 
+        /// <summary>Charging speed of a weapon: full speed when powered, nothing otherwise (no fractions).</summary>
+        public static float ChargeRate(bool powered) => powered ? 1f : 0f;
+
+        /// <summary>The weapon looks for a target: it is powered, has ammunition and is not holding fire.</summary>
+        public static bool CanEngage(WeaponControl control, int ammo, bool powered) =>
+            powered && control != WeaponControl.Off && ammo != 0;
+
+        /// <summary>Damage multiplier of a shot: the supercharge factor when supercharged.</summary>
+        public static float DamageFactor(bool supercharged, float superchargeFactor) =>
+            supercharged && superchargeFactor > 0f ? superchargeFactor : 1f;
+
+        /// <summary>
+        /// Decision to fire a charged weapon at a target in range: automatic weapons follow their fire
+        /// mode, manual weapons fire on order whatever the odds, held weapons never fire.
+        /// </summary>
+        public static bool WantsToFire(WeaponControl control, bool fireRequested, FireMode mode, float hitProbability) => control switch
+        {
+            WeaponControl.Auto => ShouldFire(mode, hitProbability),
+            WeaponControl.Manual => fireRequested,
+            _ => false,
+        };
+
+        /// <summary>Full reload time after a shot, in seconds at full power.</summary>
+        public static float ReloadSeconds(float cooldown, FireMode mode) => cooldown * CooldownFactor(mode);
+
+        /// <summary>How far the reload has gone, from 0 (just fired) to 1 (ready to fire).</summary>
+        public static float ChargeFraction(float cooldownLeft, float cooldown, FireMode mode)
+        {
+            var full = ReloadSeconds(cooldown, mode);
+            return full > 0f ? math.saturate(1f - cooldownLeft / full) : 1f;
+        }
+
         /// <summary>
         /// Random generator for one weapon at one tick: same inputs, same shots, so a run can be
         /// replayed and synchronised over the network.

@@ -79,7 +79,7 @@ namespace Space.Core.Combat
             public DynamicBuffer<ProjectileInFlight> InFlight;
 
             void Execute(Entity entity, in SimPosition position, in Team team, in AttackTarget attack,
-                         in PowerGrid power, DynamicBuffer<Weapon> weapons)
+                         DynamicBuffer<Weapon> weapons)
             {
                 if (Hulls.HasComponent(entity) && Hulls[entity].Current <= 0f)
                     return;
@@ -88,11 +88,11 @@ namespace Space.Core.Combat
                 {
                     var weapon = weapons[w];
 
-                    // Weapons charge in proportion to their subsystem's power, and stay idle without it.
-                    var charge = power.Factor(weapon.PowerSource);
+                    // A powered weapon charges at full speed; an unpowered one keeps its charge and waits.
+                    var charge = WeaponMath.ChargeRate(weapon.Powered);
                     weapon.CooldownLeft = math.max(0f, weapon.CooldownLeft - DeltaTime * charge);
 
-                    var target = weapon.Enabled && weapon.Ammo != 0 && charge > 0f
+                    var target = WeaponMath.CanEngage(weapon.Control, weapon.Ammo, weapon.Powered)
                         ? ChooseTarget(position.Value, team.Value, attack.Value, weapon)
                         : -1;
                     weapon.CurrentTarget = target >= 0 ? Entities[target] : Entity.Null;
@@ -100,6 +100,8 @@ namespace Space.Core.Combat
                     if (target >= 0 && weapon.CooldownLeft <= 0f)
                         TryFire(entity, w, ref weapon, position.Value, team.Value, target);
 
+                    // A manual fire order lasts one tick: it never fires later by surprise.
+                    weapon.FireRequested = false;
                     weapons[w] = weapon;
                 }
             }
@@ -156,7 +158,7 @@ namespace Space.Core.Combat
                                                             weapon.ProjectileSpeed, weapon.Spread)
                                   * WeaponMath.AccuracyFactor(weapon.Mode);
 
-                if (!WeaponMath.ShouldFire(weapon.Mode, probability))
+                if (!WeaponMath.WantsToFire(weapon.Control, weapon.FireRequested, weapon.Mode, probability))
                     return;
 
                 var random = WeaponMath.ShotRandom(Seed, Tick, shooter.Index, weaponIndex);
@@ -178,14 +180,15 @@ namespace Space.Core.Combat
                     impact += (double3)(side * lateral + direction * random.NextFloat(0f, radius * 3f));
                 }
 
+                var damageFactor = WeaponMath.DamageFactor(weapon.Supercharged, weapon.SuperchargeDamageFactor);
                 InFlight.Add(new ProjectileInFlight
                 {
                     Target = Entities[target],
                     ImpactTick = Tick + flightTicks,
                     Hit = hit,
                     Type = weapon.Type,
-                    Damage = weapon.Damage,
-                    ShieldDamage = weapon.ShieldDamage,
+                    Damage = weapon.Damage * damageFactor,
+                    ShieldDamage = weapon.ShieldDamage * damageFactor,
                 });
                 Shots.Add(new ShotEvent
                 {
@@ -194,7 +197,7 @@ namespace Space.Core.Combat
                     From = from, To = impact, FlightSeconds = flightTicks / SimulationClockBootstrapSystem.TickRate,
                     Hit = hit, Team = team, Type = weapon.Type,
                 });
-                weapon.CooldownLeft = weapon.Cooldown * WeaponMath.CooldownFactor(weapon.Mode);
+                weapon.CooldownLeft = WeaponMath.ReloadSeconds(weapon.Cooldown, weapon.Mode);
             }
         }
     }

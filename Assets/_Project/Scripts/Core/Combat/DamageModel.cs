@@ -104,18 +104,22 @@ namespace Space.Core.Combat
         }
 
         /// <summary>
-        /// Sets a whole distribution at once (AI, presets). Requests are served in the order
-        /// shield, energy weapons, physical weapons, engines, each clamped to its capacity and to
-        /// what the reactor has left; any unit left over goes to the engines.
+        /// Sets the shield and the engines at once (AI, presets), around the units the powered
+        /// weapons already draw: the shield first, then the engines, each clamped to its capacity and
+        /// to what the reactor has left. Units left over stay free (for weapons).
         /// </summary>
-        public static void Allocate(ref PowerGrid grid, int shield, int energyWeapons, int physicalWeapons, int engines)
+        public static void Allocate(ref PowerGrid grid, int shield, int engines)
         {
-            grid.Shield = grid.EnergyWeapons = grid.PhysicalWeapons = grid.Engines = 0;
-            var left = (int)grid.Reactor;
+            grid.Shield = grid.Engines = 0;
+            var left = grid.Free;
             left = Give(ref grid, PowerSystem.Shield, left, shield);
-            left = Give(ref grid, PowerSystem.EnergyWeapons, left, energyWeapons);
-            left = Give(ref grid, PowerSystem.PhysicalWeapons, left, physicalWeapons);
-            Give(ref grid, PowerSystem.Engines, left, math.max(engines, left));
+            Give(ref grid, PowerSystem.Engines, left, engines);
+        }
+
+        /// <summary>Gives every free unit to the engines, as far as they can take it.</summary>
+        public static void FreeToEngines(ref PowerGrid grid)
+        {
+            grid.Set(PowerSystem.Engines, grid.Engines + math.max(0, grid.Free));
         }
 
         static int Give(ref PowerGrid grid, PowerSystem system, int available, int request)

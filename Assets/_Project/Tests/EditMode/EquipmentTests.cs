@@ -69,13 +69,19 @@ namespace Space.Core.Tests
             var grid = stats.Power;
             Assert.AreEqual(8, grid.Reactor);
             Assert.AreEqual(4, grid.ShieldCapacity);
-            Assert.AreEqual(3, grid.EnergyWeaponsCapacity);
-            Assert.AreEqual(2, grid.PhysicalWeaponsCapacity);
             Assert.AreEqual(3, grid.EnginesCapacity);
             Assert.AreEqual(3, grid.Shield);
-            Assert.AreEqual(3, grid.EnergyWeapons);
-            Assert.AreEqual(0, grid.PhysicalWeapons);
             Assert.AreEqual(2, grid.Engines);
+            Assert.AreEqual(5, stats.WeaponsDemand, "laser 3 + cannon 2");
+
+            // Fitted: the laser fits in the 3 units left, the cannon does not.
+            using var weapons = new Unity.Collections.NativeArray<Weapon>(
+                new[] { LoadoutMath.ToWeapon(stats.Weapons[0]), LoadoutMath.ToWeapon(stats.Weapons[1]) }, Unity.Collections.Allocator.Temp);
+            LoadoutMath.OpeningPower(ref grid, weapons);
+            Assert.IsTrue(weapons[0].Powered);
+            Assert.IsFalse(weapons[1].Powered);
+            Assert.AreEqual(0, grid.Free);
+            Assert.IsTrue(weapons[0].CanSupercharge, "the starter laser has a supercharged mode");
 
             Assert.AreEqual(2, stats.Weapons.Count);
             Assert.AreEqual(DamageType.Laser, stats.Weapons[0].Type);
@@ -103,26 +109,30 @@ namespace Space.Core.Tests
         }
 
         [Test]
-        public void WeaponPowerDrawSetsTheSubsystemCapacities()
+        public void WeaponPowerDrawsAddUpInThePowerDemand()
         {
             var loadout = ShipLoadout.Starter();
             loadout.Hold.Add("missile_hammer"); // physical, draw 2
             Assert.IsTrue(loadout.EquipFromHold("missile_hammer"));
             Assert.AreEqual("missile_hammer", loadout.Weapons[2], "goes to the empty weapon slot");
 
-            var grid = LoadoutMath.Compute(loadout).Power;
-            Assert.AreEqual(3, grid.EnergyWeaponsCapacity);
-            Assert.AreEqual(4, grid.PhysicalWeaponsCapacity);
+            var stats = LoadoutMath.Compute(loadout);
+            Assert.AreEqual(7, stats.WeaponsDemand, "laser 3 + cannon 2 + torpedoes 2");
+            Assert.AreEqual(4 + 7 + 3, stats.PowerDemand);
         }
 
         [Test]
-        public void WithoutEnergyWeaponsTheOpeningPowerGoesToPhysicalWeapons()
+        public void WithoutTheLaserTheCannonIsPoweredAtTheOpening()
         {
             var loadout = ShipLoadout.Starter();
             Assert.IsTrue(loadout.Unequip(SlotKind.Weapon, 0));
-            var grid = LoadoutMath.Compute(loadout).Power;
-            Assert.AreEqual(0, grid.EnergyWeapons);
-            Assert.AreEqual(2, grid.PhysicalWeapons);
+            var stats = LoadoutMath.Compute(loadout);
+            var grid = stats.Power;
+            using var weapons = new Unity.Collections.NativeArray<Weapon>(
+                new[] { LoadoutMath.ToWeapon(stats.Weapons[0]) }, Unity.Collections.Allocator.Temp);
+            LoadoutMath.OpeningPower(ref grid, weapons);
+            Assert.IsTrue(weapons[0].Powered);
+            Assert.AreEqual(2, grid.Weapons);
             Assert.LessOrEqual(grid.Allocated, grid.Reactor);
         }
 

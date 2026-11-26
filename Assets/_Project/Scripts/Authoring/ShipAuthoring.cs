@@ -23,8 +23,17 @@ namespace Space.Authoring
         [Serializable]
         public class WeaponSpec
         {
-            [Tooltip("Ion and laser draw on the energy weapons subsystem; cannon and missile on the physical one.")]
+            [Tooltip("Ion and laser: energy weapons, unlimited. Cannon and missile: physical, with ammunition.")]
             public DamageType Type = DamageType.Kinetic;
+
+            [Tooltip("Power units drawn from the reactor while the weapon is powered.")]
+            public byte PowerDraw = 1;
+
+            [Tooltip("Extra units drawn when supercharged; 0 = no supercharge mode.")]
+            public byte SuperchargeDraw;
+
+            [Tooltip("Damage multiplier of a supercharged shot.")]
+            [Min(1f)] public float SuperchargeDamageFactor = 1f;
             [Min(0f)] public float Range = 300f;
 
             [Tooltip("Damage to the hull, mitigated by the target's shield.")]
@@ -52,16 +61,12 @@ namespace Space.Authoring
             [Tooltip("Total power units produced by the reactor.")]
             public byte Reactor;
 
-            [Header("Capacité de chaque sous-système")]
+            [Header("Capacité du bouclier et des moteurs")]
             public byte ShieldCapacity;
-            public byte EnergyWeaponsCapacity;
-            public byte PhysicalWeaponsCapacity;
             public byte EnginesCapacity;
 
-            [Header("Répartition au départ")]
+            [Header("Répartition au départ (les armes s'allument ensuite dans l'ordre si elles tiennent)")]
             public byte Shield;
-            public byte EnergyWeapons;
-            public byte PhysicalWeapons;
             public byte Engines;
         }
 
@@ -77,8 +82,7 @@ namespace Space.Authoring
         [Header("Réacteur")]
         public PowerSpec Power = new()
         {
-            Reactor = 4, ShieldCapacity = 0, EnergyWeaponsCapacity = 0, PhysicalWeaponsCapacity = 2, EnginesCapacity = 2,
-            PhysicalWeapons = 2, Engines = 2,
+            Reactor = 4, ShieldCapacity = 0, EnginesCapacity = 2, Engines = 2,
         };
 
         [Header("Bouclier")]
@@ -131,12 +135,9 @@ namespace Space.Authoring
                 {
                     Reactor = p.Reactor,
                     ShieldCapacity = authoring.ShieldMax > 0f ? p.ShieldCapacity : (byte)0,
-                    EnergyWeaponsCapacity = p.EnergyWeaponsCapacity,
-                    PhysicalWeaponsCapacity = p.PhysicalWeaponsCapacity,
                     EnginesCapacity = p.EnginesCapacity,
                 };
-                PowerMath.Allocate(ref grid, p.Shield, p.EnergyWeapons, p.PhysicalWeapons, p.Engines);
-                AddComponent(entity, grid);
+                PowerMath.Allocate(ref grid, p.Shield, p.Engines);
 
                 AddComponent(entity, new Shield
                 {
@@ -162,9 +163,16 @@ namespace Space.Authoring
                         ProjectileSpeed = spec.ProjectileSpeed,
                         Spread = math.radians(spec.SpreadDegrees),
                         Mode = spec.Mode,
-                        Enabled = true,
+                        Control = WeaponControl.Auto,
+                        PowerDraw = spec.PowerDraw,
+                        SuperchargeDraw = spec.SuperchargeDraw,
+                        SuperchargeDamageFactor = spec.SuperchargeDamageFactor,
                     });
                 }
+
+                // The weapons draw what is left after the shield and the engines, in order.
+                WeaponPower.PowerUpInOrder(ref grid, weapons.AsNativeArray());
+                AddComponent(entity, grid);
             }
         }
     }
