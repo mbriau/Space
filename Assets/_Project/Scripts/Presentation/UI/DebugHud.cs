@@ -60,9 +60,9 @@ namespace Space.Presentation.UI
                 GUI.Label(new Rect(16, 40, 400, 22), $"Tick {time.Tick}   Temps {time.ElapsedTime:0.0} s");
             }
 
-            GUI.Label(new Rect(16, Screen.height - 28, 900, 22),
-                "Clic gauche : sélectionner   Clic droit : déplacer (Maj : ajouter)   Molette : zoom   " +
-                "Bouton du milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
+            GUI.Label(new Rect(16, Screen.height - 28, Screen.width - 32, 22),
+                "Clic gauche / Tab : sélectionner   Clic droit : déplacer (Maj : ajouter)   Molette : zoom   " +
+                "Milieu ou Alt + clic gauche : orbite   Espace : pause   1/2/3 : vitesse");
 
             if (Controls == null || !Controls.TryGetSelection(out var selection))
                 return;

@@ -230,6 +230,7 @@ GameObject:
   - component: {fileID: 1853027386}
   - component: {fileID: 1853027385}
   - component: {fileID: 1853027384}
+  - component: {fileID: 1853027387}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -382,6 +383,9 @@ MonoBehaviour:
   OrbitSpeed: 0.25
   ZoomStep: 1.15
   ZoomSharpness: 12
+  TransitionDuration: 0.5
+  SizeInfluence: 0.25
+  MaxAutoZoomFactor: 1.4
 --- !u!114 &1853027386
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -394,8 +398,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d82e444b24a876b4686858e21c6a3154, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Controls.PlayerControls
-  InitialSelection: Cargo
+  MainShipName: Cargo
   MinPickRadiusPixels: 18
+--- !u!114 &1853027387
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1853027380}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1b8e98e71416ee4086335214845d0a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Controls.RangeRings
+  Radii:
+  - 100
+  - 250
+  - 500
+  - 1000
+  - 2000
+  Material: {fileID: 2100000, guid: c1b1900b085716f45adc7b39ddb4b2ff, type: 2}
+  Color: {r: 0.35, g: 0.75, b: 1, a: 0.35}
+  WidthPerMetreOfDistance: 0.0025
+  Segments: 192
 --- !u!1 &2035735735
 GameObject:
   m_ObjectHideFlags: 0

@@ -29,10 +29,22 @@ namespace Space.Presentation.Controls
         [Tooltip("How quickly the zoom reaches its target (higher is snappier).")]
         public float ZoomSharpness = 12f;
 
+        [Tooltip("Duration of the camera glide from one ship to the next, in seconds.")]
+        [Min(0f)] public float TransitionDuration = 0.5f;
+
+        [Tooltip("How much the zoom follows the size of a newly selected ship (0 = not at all, 1 = proportionally).")]
+        [Range(0f, 1f)] public float SizeInfluence = 0.25f;
+
+        [Tooltip("Largest zoom change caused by selecting another ship (only the player zooms further).")]
+        [Min(1f)] public float MaxAutoZoomFactor = 1.4f;
+
         PlayerControls _controls;
         Vector3 _focus;
         float _targetDistance;
         Entity _framedEntity;
+        float _framedRadius;
+        Vector3 _transitionStart;
+        float _transitionTime = float.MaxValue;
 
         void Awake()
         {
@@ -44,14 +56,13 @@ namespace Space.Presentation.Controls
         {
             if (_controls.TryGetSelection(out var selection))
             {
-                _focus = selection.RenderPosition;
-
-                // Frame a newly selected ship according to its size.
                 if (selection.Entity != _framedEntity)
-                {
-                    _framedEntity = selection.Entity;
-                    _targetDistance = Mathf.Clamp(selection.Radius * 4f, MinDistance, MaxDistance);
-                }
+                    OnSelectionChanged(selection);
+
+                // Glide from the previous focus to the new ship, then follow it exactly.
+                _transitionTime += Time.unscaledDeltaTime;
+                var t = TransitionDuration > 0f ? Mathf.Clamp01(_transitionTime / TransitionDuration) : 1f;
+                _focus = Vector3.Lerp(_transitionStart, selection.RenderPosition, Mathf.SmoothStep(0f, 1f, t));
             }
 
             ReadInput();
@@ -59,6 +70,28 @@ namespace Space.Presentation.Controls
             Distance = Mathf.Lerp(Distance, _targetDistance, 1f - Mathf.Exp(-ZoomSharpness * Time.unscaledDeltaTime));
             var rotation = Quaternion.Euler(Pitch, Yaw, 0f);
             transform.SetPositionAndRotation(_focus - rotation * Vector3.forward * Distance, rotation);
+        }
+
+        /// <summary>
+        /// Keeps yaw and pitch, and keeps the zoom almost the same: slightly closer for a smaller
+        /// ship, slightly further for a bigger one. Only the player changes the zoom a lot.
+        /// </summary>
+        void OnSelectionChanged(PlayerControls.SelectionInfo selection)
+        {
+            var first = _framedEntity == Entity.Null;
+            _framedEntity = selection.Entity;
+            _transitionStart = first ? selection.RenderPosition : _focus;
+            _transitionTime = first ? float.MaxValue : 0f;
+
+            if (first)
+                _targetDistance = Mathf.Clamp(selection.Radius * 4f, MinDistance, MaxDistance);
+            else if (_framedRadius > 0f && selection.Radius > 0f)
+            {
+                var factor = Mathf.Pow(selection.Radius / _framedRadius, SizeInfluence);
+                factor = Mathf.Clamp(factor, 1f / MaxAutoZoomFactor, MaxAutoZoomFactor);
+                _targetDistance = Mathf.Clamp(_targetDistance * factor, MinDistance, MaxDistance);
+            }
+            _framedRadius = selection.Radius;
         }
 
         void ReadInput()

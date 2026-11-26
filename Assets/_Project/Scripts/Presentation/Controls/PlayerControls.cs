@@ -20,8 +20,9 @@ namespace Space.Presentation.Controls
     [RequireComponent(typeof(Camera))]
     public class PlayerControls : MonoBehaviour
     {
-        [Tooltip("Name of the ship selected when the level starts.")]
-        public string InitialSelection = "Cargo";
+        [Tooltip("Name of the player's main ship: selected when the level starts, centre of the range rings.")]
+        [UnityEngine.Serialization.FormerlySerializedAs("InitialSelection")]
+        public string MainShipName = "Cargo";
 
         [Tooltip("Smallest click radius around a ship, in pixels, so distant ships stay clickable.")]
         [Min(4f)] public float MinPickRadiusPixels = 18f;
@@ -46,6 +47,7 @@ namespace Space.Presentation.Controls
         EntityQuery _time;
         EntityQuery _origin;
         bool _initialSelectionDone;
+        Entity _mainShip;
         Entity _nameCacheEntity;
         string _nameCache;
 
@@ -70,6 +72,7 @@ namespace Space.Presentation.Controls
                 _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
                 _origin = em.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
                 _initialSelectionDone = false;
+                _mainShip = Entity.Null;
             }
             return true;
         }
@@ -81,19 +84,34 @@ namespace Space.Presentation.Controls
 
             var em = _world.EntityManager;
             if (!_initialSelectionDone)
-                _initialSelectionDone = TrySelectByName(em, InitialSelection);
+            {
+                _mainShip = FindByName(em, MainShipName);
+                if (_mainShip != Entity.Null)
+                {
+                    Select(em, _mainShip);
+                    _initialSelectionDone = true;
+                }
+            }
+
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
+                SelectNext(em, keyboard.shiftKey.isPressed ? -1 : 1);
 
             var mouse = Mouse.current;
             if (mouse == null)
                 return;
 
-            var keyboard = Keyboard.current;
             var pointer = mouse.position.ReadValue();
 
             // Alt + left drag orbits the camera (ShipCameraRig), so it must not change the selection.
+            // A click in empty space keeps the current selection, so the camera never loses its target.
             var altHeld = keyboard != null && keyboard.altKey.isPressed;
             if (mouse.leftButton.wasPressedThisFrame && !altHeld)
-                Select(em, Pick(em, pointer));
+            {
+                var picked = Pick(em, pointer);
+                if (picked != Entity.Null)
+                    Select(em, picked);
+            }
 
             if (mouse.rightButton.wasPressedThisFrame)
             {
@@ -147,22 +165,59 @@ namespace Space.Presentation.Controls
             return _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
         }
 
-        bool TrySelectByName(EntityManager em, string shipName)
+        /// <summary>Render-space position of the player's main ship (centre of the range rings).</summary>
+        public bool TryGetMainShipPosition(out Vector3 renderPosition)
+        {
+            renderPosition = default;
+            if (!EnsureWorld() || _mainShip == Entity.Null)
+                return false;
+
+            var em = _world.EntityManager;
+            if (!em.Exists(_mainShip) || !em.HasComponent<LocalToWorld>(_mainShip))
+                return false;
+
+            renderPosition = em.GetComponentData<LocalToWorld>(_mainShip).Position;
+            return true;
+        }
+
+        Entity FindByName(EntityManager em, string shipName)
         {
             if (string.IsNullOrEmpty(shipName) || _ships.IsEmpty)
-                return false;
+                return Entity.Null;
 
             var wanted = new FixedString64Bytes(shipName);
             using var entities = _ships.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
                 if (em.HasComponent<ShipName>(entity) && em.GetComponentData<ShipName>(entity).Value == wanted)
-                {
-                    Select(em, entity);
-                    return true;
-                }
+                    return entity;
             }
-            return false;
+            return Entity.Null;
+        }
+
+        /// <summary>Tab / Shift+Tab: cycles through the ships in a stable order.</summary>
+        void SelectNext(EntityManager em, int step)
+        {
+            if (_ships.IsEmpty)
+                return;
+
+            using var entities = _ships.ToEntityArray(Allocator.Temp);
+            entities.Sort(new EntityIndexComparer());
+
+            var current = -1;
+            if (!_selected.IsEmpty)
+            {
+                using var selected = _selected.ToEntityArray(Allocator.Temp);
+                current = entities.IndexOf(selected[0]);
+            }
+
+            var next = current < 0 ? 0 : (current + step + entities.Length) % entities.Length;
+            Select(em, entities[next]);
+        }
+
+        struct EntityIndexComparer : System.Collections.Generic.IComparer<Entity>
+        {
+            public int Compare(Entity a, Entity b) => a.Index.CompareTo(b.Index);
         }
 
         /// <summary>Closest ship under the pointer, using each ship's projected radius.</summary>

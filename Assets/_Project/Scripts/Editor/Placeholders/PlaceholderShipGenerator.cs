@@ -39,12 +39,13 @@ namespace Space.Editor.Placeholders
 
         public static readonly ShipClass[] Classes =
         {
-            new("Drone",         4f,   1.2f, 0.6f, 2.0f,  1_500, 1, new Color(0.60f, 0.80f, 0.90f), 120f, 40f, 180f),
+            // Sizes are compressed for readability on a single plane: the largest ship is 150 m long.
+            new("Drone",         6f,   1.8f, 0.9f, 2.0f,  1_500, 1, new Color(0.60f, 0.80f, 0.90f), 120f, 40f, 180f),
             new("Cargo",        40f,  10f,   8f,   4.0f, 12_000, 2, new Color(0.85f, 0.70f, 0.30f),  60f,  6f,  30f),
-            new("PirateFighter",12f,   6f,   2f,   2.2f,  4_000, 2, new Color(0.80f, 0.25f, 0.20f), 140f, 35f, 120f),
-            new("Corvette",     30f,   6f,   4f,   2.5f, 10_000, 2, new Color(0.40f, 0.60f, 0.40f), 100f, 18f,  70f),
-            new("Frigate",      80f,  14f,  10f,   3.0f, 25_000, 3, new Color(0.50f, 0.55f, 0.70f),  70f,  8f,  35f),
-            new("Capital",     300f,  50f,  35f,   3.5f, 80_000, 6, new Color(0.55f, 0.55f, 0.60f),  35f,  2f,  10f),
+            new("PirateFighter",14f,   7f,   2.3f, 2.2f,  4_000, 2, new Color(0.80f, 0.25f, 0.20f), 140f, 35f, 120f),
+            new("Corvette",     28f,   5.6f, 3.7f, 2.5f, 10_000, 2, new Color(0.40f, 0.60f, 0.40f), 100f, 18f,  70f),
+            new("Frigate",      64f,  11f,   8f,   3.0f, 25_000, 3, new Color(0.50f, 0.55f, 0.70f),  70f,  8f,  35f),
+            new("Capital",     150f,  25f,  17.5f, 3.5f, 80_000, 6, new Color(0.55f, 0.55f, 0.60f),  35f,  2f,  10f),
         };
 
         /// <summary>Share of the triangle budget kept by each LOD, and the screen height at which it switches.</summary>
