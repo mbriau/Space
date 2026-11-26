@@ -103,6 +103,26 @@ est affiché dans la console. Les budgets se règlent dans `PlaceholderShipGener
 - Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
   Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
 
+## Hangar : vaisseaux moyens et champ de tir
+
+- Menu **Space > Hangar (visionneuse de vaisseaux)** : ouvre `Assets/_Project/Scenes/Hangar.unity` (créée au premier
+  usage : une scène vide avec un `ShipViewer`, qui installe sa caméra et sa lumière), puis Play.
+- Dix vaisseaux moyens de 44 à 58 m (`ShipDesigns`), générés par `ShipGenerator` à partir de modules : coque
+  (bloc, coin, arrondie, double coque, quille), cargaison (conteneurs sous la coque, sur les flancs, autour de la
+  quille, nacelles latérales, soute bombée), passerelle (avant, tour au milieu, tour arrière), moteurs (paire, trio,
+  quatre, sur pylônes, bloc) et ailes (aucune, moignons, radiateurs, dérives). Même graine = même vaisseau.
+- Style cartoon : shader `Space/ToonShip` (deux tons, bande claire, reflet net, liseré, contour en coque inversée
+  avec des normales lissées en UV3) ; peinture et émission dans les couleurs de sommets ; halos de réacteurs
+  `Space/EngineHalo`. Les shaders sont dans `Art/Shaders/Resources` pour être trouvés dans un build.
+- Trois emplacements d'arme par vaisseau : cliquer sur un emplacement pour y installer une arme du catalogue.
+  La tourelle dépend de l'arme (`TurretVisuals`) : canons jumeaux, canon lourd, rail, émetteur laser, projecteur
+  ionique, lance-missiles ; plus grande pour les armes rares et gourmandes.
+- Champ de tir : une cible invincible à 300 m sur le flanc, comme l'ennemi en combat ; les tourelles tirent avec
+  les vrais chiffres de leur arme (rechargement, vitesse des projectiles, dispersion). Purement visuel.
+- Caméra tactique du jeu par défaut (`TacticalFraming`, partagé avec `ShipCameraRig`) ; **V** : caméra libre
+  (clic droit ou bouton du milieu + glisser, ou Alt + clic gauche ; molette). **F** : tir ; **← / →** : vaisseau.
+- Le test Play mode `HangarCaptureTests` capture chaque vaisseau (vue tactique et vue libre) dans le journal de la CI.
+
 ## Scène de test
 
 `Assets/_Project/Scenes/Sandbox.unity` contient une lumière, une caméra et une sous-scène (`Sandbox_Ships.unity`)

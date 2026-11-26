@@ -138,42 +138,14 @@ namespace Space.Presentation.Controls
             }
 
             _controls.CollectEnemies(_enemies);
-            var forward = shipRotation * Vector3.forward;
-            forward.y = 0f;
-            forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : Vector3.forward;
-
-            // Direction of the fight, on the plane: toward the enemies' centre, or ahead if none.
-            var toEnemies = forward * radius * 8f;
-            if (_enemies.Count > 0)
+            var settings = new TacticalFraming.Settings
             {
-                var centre = Vector3.zero;
-                foreach (var e in _enemies)
-                    centre += new Vector3(e.x, e.y, e.z);
-                centre /= _enemies.Count;
-                toEnemies = centre - ship;
-                toEnemies.y = 0f;
-                if (toEnemies.sqrMagnitude < 1f)
-                    toEnemies = forward * radius * 8f;
-            }
-            var direction = toEnemies.normalized;
-
-            var back = radius * TacticalBack * _tacticalZoom;
-            var anchor = ship - direction * back - forward * radius * TacticalAstern * _tacticalZoom
-                         + Vector3.up * radius * TacticalHeight * _tacticalZoom;
-            var lookAt = ship + toEnemies * TacticalLookShare;
-
-            // Back off (and rise a little) until our ship and every enemy fit in the view.
-            var fov = _camera != null ? _camera.fieldOfView : 60f;
-            var aspect = _camera != null ? _camera.aspect : 16f / 9f;
-            var halfV = fov * 0.5f * Mathf.Deg2Rad * TacticalMargin;
-            var halfH = Mathf.Atan(Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad) * aspect) * TacticalMargin;
-            var position = anchor;
-            var rotation = Quaternion.LookRotation(lookAt - position, Vector3.up);
-            for (var i = 0; i < 24 && !Fits(position, rotation, ship, radius, halfH, halfV); i++)
-            {
-                position += (anchor - lookAt).normalized * radius * 0.6f + Vector3.up * radius * 0.1f;
-                rotation = Quaternion.LookRotation(lookAt - position, Vector3.up);
-            }
+                Back = TacticalBack, Height = TacticalHeight, Astern = TacticalAstern,
+                LookShare = TacticalLookShare, Margin = TacticalMargin,
+            };
+            TacticalFraming.Place(ship, shipRotation, radius, _enemies,
+                _camera != null ? _camera.fieldOfView : 60f, _camera != null ? _camera.aspect : 16f / 9f,
+                _tacticalZoom, settings, out var position, out var rotation);
 
             if (!_tacticalPlaced)
             {
@@ -196,27 +168,6 @@ namespace Space.Presentation.Controls
             Pitch = Mathf.Clamp(Mathf.DeltaAngle(0f, euler.x), -89f, 89f);
 
             transform.SetPositionAndRotation(_tacticalPosition + ShakeOffset(), _tacticalRotation);
-        }
-
-        bool Fits(Vector3 position, Quaternion rotation, Vector3 ship, float radius, float halfH, float halfV)
-        {
-            var inverse = Quaternion.Inverse(rotation);
-            bool Inside(Vector3 point, float pointRadius)
-            {
-                var local = inverse * (point - position);
-                if (local.z <= pointRadius)
-                    return false;
-                var h = Mathf.Atan2(Mathf.Abs(local.x) + pointRadius, local.z);
-                var v = Mathf.Atan2(Mathf.Abs(local.y) + pointRadius, local.z);
-                return h <= halfH && v <= halfV;
-            }
-
-            if (!Inside(ship, radius))
-                return false;
-            foreach (var e in _enemies)
-                if (!Inside(new Vector3(e.x, e.y, e.z), e.w))
-                    return false;
-            return true;
         }
 
         float _shake;

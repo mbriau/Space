@@ -3,7 +3,8 @@
     "rootNamespace": "Space.Editor",
     "references": [
         "Space.Authoring",
-        "Space.Core"
+        "Space.Core",
+        "Space.Presentation"
     ],
     "includePlatforms": [
         "Editor"
