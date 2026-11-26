@@ -8,24 +8,62 @@ using UnityEngine;
 namespace Space.Editor.Characters
 {
     /// <summary>
-    /// Builds the talking portrait of the pilot: cuts the mouth and eye patches out of the generated
-    /// variants (feathered edges, so they melt into the base picture), then a demo scene that plays the
-    /// voice line in a loop. Menu: Space &gt; Portrait de la pilote.
+    /// Builds the talking portraits: cuts the mouth and eye patches out of each character's generated
+    /// variants (feathered edges, so they melt into the base picture), then demo scenes: the pilot
+    /// alone, and a dialogue where the pirate answers her. Menus: Space &gt; Portraits.
     /// </summary>
     public static class PortraitBuilder
     {
-        const string Folder = "Assets/_Project/Art/Characters/Pilote";
-        const string Base = Folder + "/pilote_portrait.png";
-        const string Patches = Folder + "/Patches";
-        const string ScenePath = "Assets/_Project/Scenes/PilotePortrait.unity";
-        const string Voice = "Assets/_Project/Audio/Voix/Pilote/pilote_contact_pirate";
+        /// <summary>Everything needed to animate one character's portrait.</summary>
+        public sealed class Character
+        {
+            public string Name;
+            public string Folder;
+            public string BaseFile;
+            public string Voice;
+            /// <summary>Mouth patch region (pixels, origin top left): the lips and around them.</summary>
+            public RectInt MouthRegion;
+            /// <summary>Eyes patch region: both eyes, below the brows.</summary>
+            public RectInt EyesRegion;
+            public PortraitLandmarks Landmarks;
 
-        /// <summary>Mouth patch region (pixels, origin top left): the lips and the top of the chin, clear of the microphone.</summary>
-        public static readonly RectInt MouthRegion = new(668, 482, 94, 96);
+            public string Patches => Folder + "/Patches";
+            public string Base => $"{Folder}/{BaseFile}";
+        }
 
-        /// <summary>Eyes patch region: both eyes, below the brows.</summary>
-        public static readonly RectInt EyesRegion = new(640, 362, 165, 60);
+        public static readonly Character Pilote = new()
+        {
+            Name = "Kaïa",
+            Folder = "Assets/_Project/Art/Characters/Pilote",
+            BaseFile = "pilote_portrait.png",
+            Voice = "Assets/_Project/Audio/Voix/Pilote/pilote_contact_pirate",
+            MouthRegion = new RectInt(668, 482, 94, 96),
+            EyesRegion = new RectInt(640, 362, 165, 60),
+            Landmarks = new PortraitLandmarks
+            {
+                ImageSize = 1024f, HeadCenter = new Vector2(680f, 400f), HeadRadii = new Vector2(260f, 250f),
+                Neck = new Vector2(660f, 640f), TorsoLeft = 220f, TorsoRight = 900f, BorderPx = 40f,
+            },
+        };
 
+        public static readonly Character Pirate = new()
+        {
+            Name = "Silas",
+            Folder = "Assets/_Project/Art/Characters/Pirate",
+            BaseFile = "pirate_portrait.png",
+            Voice = "Assets/_Project/Audio/Voix/Pirate/pirate_reponse_kaia",
+            MouthRegion = new RectInt(455, 405, 135, 85),
+            EyesRegion = new RectInt(440, 285, 165, 55),
+            Landmarks = new PortraitLandmarks
+            {
+                // The ellipse takes the big tricorn hat along with the head.
+                ImageSize = 1024f, HeadCenter = new Vector2(600f, 270f), HeadRadii = new Vector2(330f, 300f),
+                Neck = new Vector2(600f, 570f), TorsoLeft = 220f, TorsoRight = 1000f, BorderPx = 40f,
+            },
+        };
+
+        const string PiloteScene = "Assets/_Project/Scenes/PilotePortrait.unity";
+        const string DialogueScene = "Assets/_Project/Scenes/DialoguePirate.unity";
         const int Feather = 12;
 
         static readonly (string Shape, string File)[] MouthVariants =
@@ -34,21 +72,42 @@ namespace Space.Editor.Characters
             ("D", "bouche_D_a"), ("E", "bouche_E_o"), ("F", "bouche_F_ou"),
         };
 
-        [MenuItem("Space/Portrait de la pilote")]
-        public static void BuildAndOpen()
+        [MenuItem("Space/Portraits/Pilote seule")]
+        public static void BuildPiloteScene()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 return;
-            BuildPatches();
-            BuildScene();
+            BuildPatches(Pilote);
+            BuildSingleScene(Pilote, PiloteScene);
         }
 
-        public static void BuildPatches()
+        [MenuItem("Space/Portraits/Dialogue pilote et pirate")]
+        public static void BuildDialogueSceneMenu()
         {
-            Directory.CreateDirectory(Patches);
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                return;
+            BuildAll();
+        }
+
+        /// <summary>Patches of every character and both demo scenes (the dialogue stays open).</summary>
+        public static void BuildAll()
+        {
+            BuildPatches(Pilote);
+            BuildPatches(Pirate);
+            BuildSingleScene(Pilote, PiloteScene);
+            BuildDialogueScene();
+        }
+
+        public static void BuildPatches(Character character)
+        {
+            Directory.CreateDirectory(character.Patches);
             foreach (var (shape, file) in MouthVariants)
-                Cut($"{Folder}/Variants/{file}.png", MouthRegion, $"{Patches}/bouche_{shape}.png");
-            Cut($"{Folder}/Variants/yeux_fermes.png", EyesRegion, $"{Patches}/yeux_fermes.png");
+            {
+                var source = $"{character.Folder}/Variants/{file}.png";
+                if (File.Exists(source))
+                    Cut(source, character.MouthRegion, $"{character.Patches}/bouche_{shape}.png");
+            }
+            Cut($"{character.Folder}/Variants/yeux_fermes.png", character.EyesRegion, $"{character.Patches}/yeux_fermes.png");
             AssetDatabase.Refresh();
         }
 
@@ -74,33 +133,60 @@ namespace Space.Editor.Characters
             Object.DestroyImmediate(patch);
         }
 
-        public static void BuildScene()
+        static void BuildSingleScene(Character character, string path)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            AddCamera(0.52f);
+            AddPortrait(character, Vector3.zero);
+            EditorSceneManager.SaveScene(scene, path);
+            Debug.Log($"Portrait : {path} (Play pour l'entendre)");
+        }
 
+        /// <summary>Kaïa on the left looking right, Silas on the right looking left: she calls, he answers.</summary>
+        static void BuildDialogueScene()
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            AddCamera(0.58f);
+            var pilote = AddPortrait(Pilote, new Vector3(-0.53f, 0f, 0f));
+            var pirate = AddPortrait(Pirate, new Vector3(0.53f, 0f, 0f));
+            var dialogue = new GameObject("Dialogue").AddComponent<PortraitDialogue>();
+            dialogue.Speakers = new List<PortraitRig> { pilote, pirate };
+            EditorSceneManager.SaveScene(scene, DialogueScene);
+            Debug.Log($"Dialogue : {DialogueScene} (Play pour l'entendre)");
+        }
+
+        static void AddCamera(float size)
+        {
             var camera = new GameObject("Camera").AddComponent<Camera>();
             camera.orthographic = true;
-            camera.orthographicSize = 0.52f;
+            camera.orthographicSize = size;
             camera.transform.position = new Vector3(0f, 0f, -5f);
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.04f, 0.05f, 0.08f);
             camera.gameObject.AddComponent<AudioListener>();
             camera.tag = "MainCamera";
+        }
 
-            var root = new GameObject("Pilote");
+        static PortraitRig AddPortrait(Character character, Vector3 position)
+        {
+            var root = new GameObject(character.Name);
+            root.transform.position = position;
             var rig = root.AddComponent<PortraitRig>();
-            rig.Base = Layer(root.transform, "Base", new RectInt(0, 0, 1024, 1024), 0, AssetDatabase.LoadAssetAtPath<Texture>(Base));
-            rig.Eyes = Layer(root.transform, "Yeux", EyesRegion, 1, null);
-            rig.Mouth = Layer(root.transform, "Bouche", MouthRegion, 2, null);
-            rig.EyesClosed = AssetDatabase.LoadAssetAtPath<Texture>($"{Patches}/yeux_fermes.png");
+            rig.Landmarks = character.Landmarks;
+            rig.Base = Layer(root.transform, "Base", new RectInt(0, 0, 1024, 1024), 0, AssetDatabase.LoadAssetAtPath<Texture>(character.Base));
+            rig.Eyes = Layer(root.transform, "Yeux", character.EyesRegion, 1, null);
+            rig.Mouth = Layer(root.transform, "Bouche", character.MouthRegion, 2, null);
+            rig.EyesClosed = AssetDatabase.LoadAssetAtPath<Texture>($"{character.Patches}/yeux_fermes.png");
             rig.Mouths = new List<PortraitRig.MouthPatch>();
             foreach (var (shape, _) in MouthVariants)
-                rig.Mouths.Add(new PortraitRig.MouthPatch { Shape = shape, Texture = AssetDatabase.LoadAssetAtPath<Texture>($"{Patches}/bouche_{shape}.png") });
-            rig.Line = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Voice}.wav");
-            rig.LipSync = AssetDatabase.LoadAssetAtPath<TextAsset>($"{Voice}.lipsync.json");
-
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            Debug.Log($"Portrait de la pilote : {ScenePath} (Play pour l'entendre)");
+            {
+                var texture = AssetDatabase.LoadAssetAtPath<Texture>($"{character.Patches}/bouche_{shape}.png");
+                if (texture != null)
+                    rig.Mouths.Add(new PortraitRig.MouthPatch { Shape = shape, Texture = texture });
+            }
+            rig.Line = AssetDatabase.LoadAssetAtPath<AudioClip>($"{character.Voice}.wav");
+            rig.LipSync = AssetDatabase.LoadAssetAtPath<TextAsset>($"{character.Voice}.lipsync.json");
+            return rig;
         }
 
         static PortraitLayer Layer(Transform parent, string name, RectInt region, int order, Texture texture)

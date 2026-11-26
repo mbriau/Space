@@ -20,6 +20,7 @@ namespace Space.Presentation.Characters
         public int Order;
 
         [Range(0f, 1f)] public float Alpha = 1f;
+        [Range(0f, 1f)] public float Brightness = 1f;
 
         Mesh _mesh;
         Vector3[] _vertices;
@@ -79,7 +80,7 @@ namespace Space.Presentation.Characters
             renderer.GetPropertyBlock(_block);
             if (Texture != null)
                 _block.SetTexture(MainTex, Texture);
-            _block.SetColor(ColorId, new Color(1f, 1f, 1f, Alpha));
+            _block.SetColor(ColorId, new Color(Brightness, Brightness, Brightness, Alpha));
             renderer.SetPropertyBlock(_block);
         }
 
