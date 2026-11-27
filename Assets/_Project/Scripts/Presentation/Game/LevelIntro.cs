@@ -14,7 +14,7 @@ namespace Space.Presentation.Game
     /// the camera flies over our ship and settles above it; Kaïa tells a story on the comms; a
     /// little later she picks up contacts, the clock runs, the camera looks right then left and the
     /// enemies drop out of hyperspace; she calls them, their captain answers in the other corner;
-    /// then the frames leave and the fight begins. Escape skips it.
+    /// then the frames leave and the fight begins. The "Passer" button (or Escape) skips it.
     /// </summary>
     public class LevelIntro : MonoBehaviour
     {
@@ -57,7 +57,7 @@ namespace Space.Presentation.Game
         PlayerControls _controls;
         Coroutine _routine;
         Line _subtitle;
-        GUIStyle _name, _role, _subtitleStyle, _hint;
+        GUIStyle _name, _role, _subtitleStyle, _hint, _skip;
 
         public bool Playing => _routine != null;
 
@@ -233,7 +233,7 @@ namespace Space.Presentation.Game
                 Skip();
         }
 
-        /// <summary>Ends the intro at once and starts the fight (Escape).</summary>
+        /// <summary>Ends the intro at once and starts the fight (Passer button or Escape).</summary>
         public void Skip()
         {
             if (!Playing)
@@ -273,7 +273,21 @@ namespace Space.Presentation.Game
             }
 
             if (Playing)
-                GUI.Label(new Rect(Screen.width - 220, Screen.height - 34, 200, 24), "Échap : passer", _hint);
+                DrawSkipButton();
+        }
+
+        /// <summary>A "Passer" button in the bottom right corner, with its Escape hint below.</summary>
+        void DrawSkipButton()
+        {
+            const float width = 150f, height = 40f, margin = 20f;
+            var rect = new Rect(Screen.width - margin - width, Screen.height - margin - height - 18f, width, height);
+            UiFocus.AddHudRect(rect);
+            var hover = rect.Contains(Event.current.mousePosition);
+            Fill(rect, hover ? LeftAccent : new Color(0.5f, 0.52f, 0.56f, 0.9f));
+            Fill(new Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4), new Color(0.12f, 0.13f, 0.16f, hover ? 0.95f : 0.8f));
+            if (GUI.Button(rect, "PASSER  ▸▸", _skip))
+                Skip();
+            GUI.Label(new Rect(rect.x, rect.yMax + 2, rect.width, 16f), "Échap", _hint);
         }
 
         /// <summary>
@@ -330,7 +344,8 @@ namespace Space.Presentation.Game
             _name = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, normal = { textColor = Color.white } };
             _role = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleRight, normal = { textColor = new Color(0.75f, 0.78f, 0.84f) } };
             _subtitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.UpperCenter, wordWrap = true, richText = true, normal = { textColor = Color.white } };
-            _hint = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleRight, normal = { textColor = new Color(1f, 1f, 1f, 0.6f) } };
+            _hint = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.UpperCenter, normal = { textColor = new Color(1f, 1f, 1f, 0.6f) } };
+            _skip = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, normal = { textColor = Color.white }, hover = { textColor = Color.white } };
         }
     }
 }
