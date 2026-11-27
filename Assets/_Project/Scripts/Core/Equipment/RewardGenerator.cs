@@ -31,8 +31,12 @@ namespace Space.Core.Equipment
         /// <summary>Credits for passing on every offer.</summary>
         public const int SkipCredits = 40;
 
-        public static List<RewardOffer> Roll(ShipLoadout loadout, uint seed, int levelsCompleted, int count = OfferCount) =>
-            Roll(ItemCatalog.All, UpgradeCatalog.All, loadout, seed, levelsCompleted, count);
+        /// <summary>An elite fight's offers are drawn as if the run were this many levels further: rarer things.</summary>
+        public const int EliteProgressBonus = 4;
+
+        public static List<RewardOffer> Roll(ShipLoadout loadout, uint seed, int levelsCompleted, bool elite = false,
+            int count = OfferCount) =>
+            Roll(ItemCatalog.All, UpgradeCatalog.All, loadout, seed, levelsCompleted + (elite ? EliteProgressBonus : 0), count);
 
         public static List<RewardOffer> Roll(IReadOnlyList<ItemDefinition> items, IReadOnlyList<UpgradeDefinition> upgrades,
             ShipLoadout loadout, uint seed, int levelsCompleted, int count = OfferCount)

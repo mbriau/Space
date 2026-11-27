@@ -64,5 +64,29 @@ namespace Space.Presentation.Tests
             run.ShopOpen = true;
             Assert.IsTrue(run.CanBuy(ItemCatalog.Get(run.ShopOffers[0])));
         }
+    
+        [Test]
+        public void ThePhaseIsThreeDeliveries()
+        {
+            var run = new RunState();
+            run.StartNewRun();
+            run.StartSector(11u, 3);
+            Assert.IsNotNull(run.Sector);
+            Assert.AreEqual(0, run.SectorIndex);
+            Assert.IsFalse(run.NextSector(12u, 3), "not delivered yet");
+
+            for (var sector = 1; sector < RunState.SectorsInPhase; sector++)
+            {
+                run.SectorDone = true;
+                Assert.IsFalse(run.PhaseComplete);
+                Assert.IsTrue(run.NextSector((uint)(20 + sector), 3));
+                Assert.AreEqual(sector, run.SectorIndex);
+                Assert.IsFalse(run.SectorDone);
+                Assert.AreEqual(run.Sector.Map.Start, run.Sector.Current);
+            }
+            run.SectorDone = true;
+            Assert.IsTrue(run.PhaseComplete);
+            Assert.IsFalse(run.NextSector(99u, 3));
+        }
     }
 }
