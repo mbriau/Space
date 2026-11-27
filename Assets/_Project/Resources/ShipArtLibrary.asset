@@ -20,6 +20,7 @@ MonoBehaviour:
     ModelScale: 1
     TurretSize: 2
     Aura: []
+    AuraShell: {fileID: 4300000, guid: fe1da9c4669fe8d47863128fbf89c925, type: 2}
     Slots:
     - {x: -0.15007329, y: 1.5507573, z: 18.358967}
     - {x: -0.20009772, y: 2.451197, z: 5.9028826}
@@ -112,6 +113,7 @@ MonoBehaviour:
     - Center: {x: 8.010397, y: -2.3374205, z: -0.3079009}
       Size: {x: 2.1403198, y: 12.361438, z: 6.94512}
       Euler: {x: -0.000009334667, y: -0.0000025044787, z: 270}
+    AuraShell: {fileID: 0}
     Slots:
     - {x: 0, y: 3.9376707, z: 0.00002861023}
     Turrets: []

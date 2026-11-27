@@ -24,6 +24,7 @@ namespace Space.Presentation.Ships
         readonly List<Mesh> _meshes = new();
         readonly List<MeshRenderer> _aura = new();
         Material _auraMaterial;
+        MeshCollider _shellCollider;
         float _flash;
         static Mesh _sphere;
         static readonly int IntensityId = Shader.PropertyToID("_Intensity");
@@ -57,6 +58,7 @@ namespace Space.Presentation.Ships
                 hull.transform.SetParent(transform, false);
                 hull.AddComponent<MeshFilter>().sharedMesh = art.Hull;
                 hull.AddComponent<MeshRenderer>().sharedMaterial = art.Material;
+                BuildAura(art);
             }
             for (var i = 0; i < art.Slots.Count; i++)
                 Turrets.Add(null);
@@ -64,12 +66,30 @@ namespace Space.Presentation.Ships
 
         void BuildAura(ShipArt art)
         {
-            if (art.Aura == null || art.Aura.Count == 0)
+            if (!art.HasAura)
                 return;
             var shader = Shader.Find("Space/ShieldAura");
             if (shader == null)
                 return;
             _auraMaterial = new Material(shader) { name = "ShieldAura" };
+
+            if (art.AuraShell != null)
+            {
+                // The hull pushed outward: the aura hugs the whole silhouette. Its collider finds where
+                // shots strike it.
+                var shell = new GameObject("Aura", typeof(MeshFilter), typeof(MeshRenderer));
+                shell.transform.SetParent(transform, false);
+                shell.GetComponent<MeshFilter>().sharedMesh = art.AuraShell;
+                var shellRenderer = shell.GetComponent<MeshRenderer>();
+                shellRenderer.sharedMaterial = _auraMaterial;
+                shellRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                shellRenderer.receiveShadows = false;
+                _aura.Add(shellRenderer);
+                _shellCollider = shell.AddComponent<MeshCollider>();
+                _shellCollider.sharedMesh = art.AuraShell;
+                return;
+            }
+
             foreach (var shape in art.Aura)
             {
                 var go = new GameObject("Aura", typeof(MeshFilter), typeof(MeshRenderer));
@@ -109,6 +129,18 @@ namespace Space.Presentation.Ships
         {
             point = transform.position;
             normal = Vector3.up;
+            if (_shellCollider != null)
+            {
+                // Toward the centre of the ship, from where the shot came, onto the shell.
+                var ray = new Ray(from, (transform.position - from).normalized);
+                if (_shellCollider.Raycast(ray, out var hit, Vector3.Distance(from, transform.position) * 2f))
+                {
+                    point = hit.point;
+                    normal = hit.normal;
+                    return true;
+                }
+                return false;
+            }
             if (Art == null || Art.Aura == null || Art.Aura.Count == 0)
                 return false;
 

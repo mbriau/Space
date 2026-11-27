@@ -70,6 +70,15 @@ namespace Space.Presentation.Ships
         /// </summary>
         public List<AuraShape> Aura = new();
 
+        /// <summary>
+        /// Shield aura of a textured hull: the hull itself pushed outward along its normals, in ship
+        /// space. Used instead of <see cref="Aura"/> when set.
+        /// </summary>
+        public Mesh AuraShell;
+
+        /// <summary>The ship has a shield aura of its own (and needs no bubble).</summary>
+        public bool HasAura => AuraShell != null || (Aura != null && Aura.Count > 0);
+
         /// <summary>Turret pivots on the deck, one per weapon slot, front to back.</summary>
         public List<Vector3> Slots = new();
 
