@@ -173,8 +173,8 @@ namespace Space.Editor.Placeholders
                 ship.Acceleration = shipClass.Acceleration;
                 ship.TurnRateDegrees = shipClass.TurnRate;
                 ConfigureCombat(ship, shipClass.Name);
-                // A ready-made model carries its own shield aura (ShipArtModel): no bubble.
-                if (ship.ShieldMax > 0f && (art == null || art.Model == null))
+                // Art with a shield aura of its own (ShipArtModel): no bubble.
+                if (ship.ShieldMax > 0f && (art == null || !art.HasAura))
                     AddShieldBubble(root, bounds);
 
                 PrefabUtility.SaveAsPrefabAsset(root, $"{Root}/Prefabs/{shipClass.Name}.prefab");

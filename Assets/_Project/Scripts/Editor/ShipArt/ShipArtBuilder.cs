@@ -240,6 +240,7 @@ namespace Space.Editor.ShipArt
                 DesignId = spec.DesignId,
                 Hull = SaveMesh(spec, hull),
                 Material = material,
+                AuraShell = SaveMesh(spec, Shell(hull, spec.Length * 0.025f, $"{spec.DesignId}_AuraShell")),
             };
 
             for (var h = 0; h < spec.Heads.Length; h++)
@@ -263,6 +264,41 @@ namespace Space.Editor.ShipArt
             library.Ships.Add(art);
             EditorUtility.SetDirty(library);
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// The shield shell of a hull: every vertex pushed out by <paramref name="offset"/> metres along
+        /// the normal averaged over all vertices at the same place, so the seams of the model do not
+        /// split the shell open.
+        /// </summary>
+        public static Mesh Shell(Mesh hull, float offset, string name)
+        {
+            var positions = hull.vertices;
+            var normals = hull.normals;
+            var sums = new Dictionary<Vector3Int, Vector3>();
+            var keys = new Vector3Int[positions.Length];
+            for (var i = 0; i < positions.Length; i++)
+            {
+                keys[i] = Vector3Int.RoundToInt(positions[i] * 1000f);
+                sums.TryGetValue(keys[i], out var sum);
+                sums[keys[i]] = sum + (i < normals.Length ? normals[i] : Vector3.zero);
+            }
+
+            var shellPositions = new Vector3[positions.Length];
+            var shellNormals = new Vector3[positions.Length];
+            for (var i = 0; i < positions.Length; i++)
+            {
+                var normal = sums[keys[i]].sqrMagnitude > 1e-8f ? sums[keys[i]].normalized : Vector3.up;
+                shellPositions[i] = positions[i] + normal * offset;
+                shellNormals[i] = normal;
+            }
+
+            var shell = new Mesh { name = name, indexFormat = hull.indexFormat };
+            shell.vertices = shellPositions;
+            shell.normals = shellNormals;
+            shell.triangles = hull.triangles;
+            shell.RecalculateBounds();
+            return shell;
         }
 
         static float LengthOf(Vector3[] positions)
