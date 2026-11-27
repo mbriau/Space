@@ -68,7 +68,7 @@ namespace Space.Presentation.Controls
         [Tooltip("How quickly the tactical camera follows its ideal placement.")]
         public float TacticalSharpness = 3f;
 
-        [Tooltip("How much the tactical camera follows the course's roll and pitch (0 = stays level, 1 = fully): the rest shows as the ships banking.")]
+        [Tooltip("How much the tactical camera follows the course's roll and pitch (0 = stays level, 1 = fully): the rest shows as the ships banking. Used only without a course: the course asset (CoursePath) sets it otherwise.")]
         [Range(0f, 1f)] public float CourseFollow = 0.4f;
 
         PlayerControls _controls;
@@ -168,7 +168,8 @@ namespace Space.Presentation.Controls
                 LookShare = TacticalLookShare, Margin = TacticalMargin,
             };
             // The course banks and climbs a little: the camera follows part of it.
-            var up = Vector3.Slerp(Vector3.up, shipRotation * Vector3.up, CourseFollow);
+            var follow = Space.Presentation.Rendering.CourseWarpSystem.CameraFollow;
+            var up = Vector3.Slerp(Vector3.up, shipRotation * Vector3.up, follow >= 0f ? follow : CourseFollow);
             TacticalFraming.Place(ship, shipRotation, radius, _enemies,
                 _camera != null ? _camera.fieldOfView : 60f, _camera != null ? _camera.aspect : 16f / 9f,
                 _tacticalZoom, settings, up, out var position, out var rotation);

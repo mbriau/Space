@@ -15,30 +15,71 @@ namespace Space.Presentation.Rendering
         public float Roll;
     }
 
-    /// <summary>Shape of a generated course: gentle swings left and right, up and down, banking into the turns.</summary>
+    /// <summary>Shape of a generated course: swings left and right, up and down, roll into the turns and of its own.</summary>
     [System.Serializable]
     public struct CourseShape
     {
-        public int Knots;
+        [UnityEngine.Tooltip("Length of the course, metres (past it, it goes straight on).")]
+        public float Length;
+        [UnityEngine.Tooltip("Distance between two control points, metres (short enough for the quickest roll).")]
         public float Spacing;
+        [UnityEngine.Tooltip("Swing left and right, metres.")]
         public float Lateral;
+        [UnityEngine.Tooltip("Length of one swing left and right, metres (the cruise covers 15 m/s).")]
         public float LateralWavelength;
+        [UnityEngine.Tooltip("Swing up and down, metres.")]
         public float Vertical;
         public float VerticalWavelength;
-        /// <summary>Distance over which the roll comes in (the intro starts level).</summary>
+        [UnityEngine.Tooltip("Distance over which the roll comes in (the intro starts level), metres.")]
         public float Ramp;
-        /// <summary>Roll per unit of lateral curvature (degrees × metres).</summary>
+        [UnityEngine.Tooltip("Roll into the turns: degrees per unit of curvature (degrees × metres).")]
         public float Bank;
+        [UnityEngine.Tooltip("Largest roll into the turns, degrees.")]
         public float MaxRoll;
-        /// <summary>Slow roll of its own, independent of the turns, in degrees.</summary>
+        [UnityEngine.Tooltip("Roll of its own, independent of the turns, degrees.")]
         public float Wobble;
+        [UnityEngine.Tooltip("Length of one roll of its own, metres (500 m ≈ 33 s at cruise speed).")]
+        public float WobbleWavelength;
+        [UnityEngine.Tooltip("How much the tactical camera follows the course's roll and pitch (0 = level, 1 = fully). The camera's roll is what turns the stars.")]
+        [UnityEngine.Range(0f, 1f)] public float CameraFollow;
 
+        /// <summary>Calm: slow, wide swings and a light roll.</summary>
         public static CourseShape Default => new()
         {
-            Knots = 64, Spacing = 500f,
+            Length = 32000f, Spacing = 75f,
             Lateral = 400f, LateralWavelength = 7000f,
             Vertical = 80f, VerticalWavelength = 6500f,
-            Ramp = 900f, Bank = 35000f, MaxRoll = 10f, Wobble = 2f,
+            Ramp = 900f, Bank = 35000f, MaxRoll = 10f,
+            Wobble = 2f, WobbleWavelength = 3100f,
+            CameraFollow = 0.4f,
+        };
+
+        /// <summary>Intense: tighter swings, a strong and quicker roll that the camera mostly follows.</summary>
+        public static CourseShape Intense => new()
+        {
+            Length = 32000f, Spacing = 75f,
+            Lateral = 400f, LateralWavelength = 4500f,
+            Vertical = 160f, VerticalWavelength = 3600f,
+            Ramp = 400f, Bank = 43000f, MaxRoll = 30f,
+            Wobble = 15f, WobbleWavelength = 500f,
+            CameraFollow = 0.75f,
+        };
+
+        /// <summary>Between two shapes, every setting (0 = <paramref name="a"/>, 1 = <paramref name="b"/>).</summary>
+        public static CourseShape Lerp(in CourseShape a, in CourseShape b, float t) => new()
+        {
+            Length = math.lerp(a.Length, b.Length, t),
+            Spacing = math.lerp(a.Spacing, b.Spacing, t),
+            Lateral = math.lerp(a.Lateral, b.Lateral, t),
+            LateralWavelength = math.lerp(a.LateralWavelength, b.LateralWavelength, t),
+            Vertical = math.lerp(a.Vertical, b.Vertical, t),
+            VerticalWavelength = math.lerp(a.VerticalWavelength, b.VerticalWavelength, t),
+            Ramp = math.lerp(a.Ramp, b.Ramp, t),
+            Bank = math.lerp(a.Bank, b.Bank, t),
+            MaxRoll = math.lerp(a.MaxRoll, b.MaxRoll, t),
+            Wobble = math.lerp(a.Wobble, b.Wobble, t),
+            WobbleWavelength = math.lerp(a.WobbleWavelength, b.WobbleWavelength, t),
+            CameraFollow = math.lerp(a.CameraFollow, b.CameraFollow, t),
         };
     }
 
@@ -72,7 +113,7 @@ namespace Space.Presentation.Rendering
             var sideB = random.NextBool() ? 1f : -1f;
             var sideC = random.NextBool() ? 1f : -1f;
             var phaseD = random.NextFloat(0f, 2f * math.PI);
-            var count = math.max(4, shape.Knots);
+            var count = math.max(4, (int)math.ceil(shape.Length / math.max(1f, shape.Spacing)) + 1);
             var knots = new CourseKnot[count];
             var kLateral = 2f * math.PI / shape.LateralWavelength;
             var kVertical = 2f * math.PI / shape.VerticalWavelength;
@@ -91,7 +132,7 @@ namespace Space.Presentation.Rendering
                 const float h = 50f;
                 var curvature = (Lateral(z + h) - 2f * Lateral(z) + Lateral(z - h)) / (h * h);
                 var roll = Envelope(z) * (math.clamp(curvature * shape.Bank, -shape.MaxRoll, shape.MaxRoll)
-                                          + shape.Wobble * math.sin(2f * math.PI * z / 3100f + phaseD));
+                                          + shape.Wobble * math.sin(2f * math.PI * z / math.max(50f, shape.WobbleWavelength) + phaseD));
                 knots[i] = new CourseKnot { Position = new float3(Lateral(z), Vertical(z), z), Roll = roll };
             }
             return knots;

@@ -45,5 +45,33 @@ namespace Space.Presentation.Tests
             Assert.AreEqual(60f, BackdropMath.HorizontalFov(60f, 1f), 1e-3f);
             Assert.Greater(BackdropMath.HorizontalFov(60f, 16f / 9f), 90f);
         }
+
+        [Test]
+        public void ALayerRolledAgainstTheCameraScrollsAlongItsOwnAxes()
+        {
+            // A layer turned a quarter turn: a scroll to the right of the screen runs down its own Y.
+            var scroll = BackdropMath.ToLayer(new Vector2(1f, 0f), 90f);
+            Assert.AreEqual(0f, scroll.x, 1e-5f);
+            Assert.AreEqual(-1f, scroll.y, 1e-5f);
+            Assert.AreEqual(new Vector2(0.3f, -0.2f), BackdropMath.ToLayer(new Vector2(0.3f, -0.2f), 0f));
+        }
+
+        [Test]
+        public void ARolledLayerStillCoversTheView()
+        {
+            var side = BackdropMath.RollCover(16f, 9f);
+            // The view's corners stay inside the square layer whatever the roll.
+            for (var roll = 0f; roll < 360f; roll += 15f)
+            {
+                var a = roll * Mathf.Deg2Rad;
+                foreach (var corner in new[] { new Vector2(8f, 4.5f), new Vector2(-8f, 4.5f) })
+                {
+                    var x = corner.x * Mathf.Cos(a) + corner.y * Mathf.Sin(a);
+                    var y = -corner.x * Mathf.Sin(a) + corner.y * Mathf.Cos(a);
+                    Assert.LessOrEqual(Mathf.Abs(x), side * 0.5f + 1e-4f);
+                    Assert.LessOrEqual(Mathf.Abs(y), side * 0.5f + 1e-4f);
+                }
+            }
+        }
     }
 }

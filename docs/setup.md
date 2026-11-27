@@ -172,16 +172,25 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
   chaque vaisseau garde sa place par rapport à la voie (droite, haut, distance parcourue), donc les ennemis à
   côté suivent la courbe avec nous.
 - La spline : asset `Assets/_Project/Resources/CoursePath.asset` (`CoursePath`), partagée par tous les niveaux
-  pour l'instant. Menu **Space > Generate Course Path** pour la regénérer à partir de sa graine et de sa forme
-  (`CourseShape` : amplitude et longueur d'onde à gauche/droite et en hauteur, roulis dans les virages, rampe
-  du roulis au départ). Aujourd'hui : écarts de quelques centaines de mètres sur 7 km, virages d'au moins 2 km de rayon, roulis
-  ≤ 12°, départ droit et à plat.
+  pour l'instant. Elle a deux formes, **Calm** et **Intense** (`CourseShape` : écarts gauche/droite et haut/bas
+  et leurs longueurs d'onde, roulis dans les virages `Bank`/`MaxRoll`, roulis propre `Wobble`/
+  `WobbleWavelength`, rampe du roulis au départ, `CameraFollow`), et un curseur **Intensity** qui mélange tous
+  les réglages entre les deux (1 = intense, la valeur actuelle).
+- **Réglage en direct** : toute modification de l'asset dans l'inspecteur regénère la spline et le jeu la
+  reprend aussitôt, Play mode compris (le vaisseau peut sauter un peu quand la forme change sous lui).
+  Menu **Space > Generate Course Path** : regénère hors Play mode. Repères : calme = virages ≥ 2 km de rayon,
+  roulis ≤ 12°, oscillation propre de ~3,5 min ; intense = virages ≥ 1 km, roulis jusqu'à ~45°, oscillation
+  propre de ~33 s (500 m à 15 m/s). Départ droit et à plat dans les deux cas.
 - `CourseWarpSystem` cuit la spline par longueur d'arc (un repère tous les 4 m), suit la voie du vaisseau
   amiral et tient à jour le singleton `RenderSpace` : sim → rendu (`ToRender`), rendu → sim pour les clics
   (`ToSim`). Tout ce qui convertit des positions de simulation passe par lui (vaisseaux, traçantes, impacts,
   destination, fond, poussière). `CourseWarpSystem.Bend = false` remet la voie droite.
-- Caméra tactique : elle suit 40 % de l'inclinaison de la trajectoire (`ShipCameraRig.CourseFollow`) ; le
-  reste se voit comme les vaisseaux qui s'inclinent. Les cercles de portée s'inclinent avec le plan.
+- Caméra tactique : elle suit `CameraFollow` de l'inclinaison de la trajectoire (calme 40 %, intense 75 % ;
+  `ShipCameraRig.CourseFollow` sert seulement sans spline) ; le reste se voit comme les vaisseaux qui
+  s'inclinent. Comme elle regarde par-dessus le flanc vers les ennemis, le roulis se voit surtout comme la
+  bataille qui bascule et le fond qui glisse de haut en bas. Les cercles de portée s'inclinent avec le plan.
+- Le fond (`SpaceBackdrop`) tourne aussi contre le roulis de la caméra, pour rester de niveau avec le monde
+  (couches carrées assez grandes pour couvrir l'écran à toute inclinaison).
 - Ennemis : `IdleSwaySystem` donne à chacun un `IdleSway` (montée et descente, avance et recul, léger
   tangage), proportionné à sa taille et différent pour chacun, appliqué seulement au rendu ; jamais de côté,
   la distance de combat ne change pas. Règles pures dans `CourseMath` (testées).

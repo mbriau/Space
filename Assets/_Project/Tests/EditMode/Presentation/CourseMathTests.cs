@@ -36,7 +36,7 @@ namespace Space.Presentation.Tests
             var maxRoll = 0f;
             // Curvature over 40 m, up to the last segment (past it the course goes straight on).
             const int span = 10;
-            var lastKnot = (int)((shape.Knots - 2) * shape.Spacing / Step);
+            var lastKnot = (int)((shape.Length - shape.Spacing) / Step);
             for (var i = span; i < math.min(positions.Count - span, lastKnot); i++)
             {
                 var a = math.normalize((float3)(positions[i] - positions[i - span]));
@@ -52,6 +52,70 @@ namespace Space.Presentation.Tests
             Assert.Greater(tightest, 2000f, "aucun virage plus serré qu'un rayon de 2 km");
             Assert.LessOrEqual(maxRoll, shape.MaxRoll + shape.Wobble + 0.5f, "roulis léger");
             Assert.Greater(maxRoll, 3f, "mais visible");
+        }
+
+        /// <summary>Largest roll, and how often the roll turns back, over the first 3 km (about three minutes).</summary>
+        static float MaxRoll(in CourseShape shape, out int rollSwings)
+        {
+            var knots = CourseMath.Generate(7, shape);
+            var max = 0f;
+            rollSwings = 0;
+            var lastDirection = 0f;
+            for (var i = 1; i < knots.Length && knots[i].Position.z <= 3000f; i++)
+            {
+                max = math.max(max, math.abs(knots[i].Roll));
+                var direction = math.sign(knots[i].Roll - knots[i - 1].Roll);
+                if (direction != 0f && direction != lastDirection)
+                {
+                    rollSwings++;
+                    lastDirection = direction;
+                }
+            }
+            return max;
+        }
+
+        [Test]
+        public void TheIntenseCourseRollsMuchMoreAndMoreOften()
+        {
+            var calm = MaxRoll(CourseShape.Default, out var calmSwings);
+            var intense = MaxRoll(CourseShape.Intense, out var intenseSwings);
+            Assert.Greater(intense, 25f, "roulis franc");
+            Assert.Greater(intense, calm * 2.5f);
+            Assert.GreaterOrEqual(intenseSwings, 6, "le roulis change de sens plusieurs fois en trois minutes");
+            Assert.Greater(intenseSwings, calmSwings);
+            Assert.Greater(CourseShape.Intense.CameraFollow, CourseShape.Default.CameraFollow, "la caméra suit plus, le fond tourne plus");
+        }
+
+        [Test]
+        public void TheIntensityBlendsEverySetting()
+        {
+            var calm = CourseShape.Default;
+            var intense = CourseShape.Intense;
+            Assert.AreEqual(calm.Wobble, CourseShape.Lerp(calm, intense, 0f).Wobble);
+            Assert.AreEqual(intense.MaxRoll, CourseShape.Lerp(calm, intense, 1f).MaxRoll);
+            var half = CourseShape.Lerp(calm, intense, 0.5f);
+            Assert.AreEqual((calm.CameraFollow + intense.CameraFollow) * 0.5f, half.CameraFollow, 1e-5f);
+            Assert.AreEqual((calm.WobbleWavelength + intense.WobbleWavelength) * 0.5f, half.WobbleWavelength, 1e-3f);
+        }
+
+        [Test]
+        public void TheIntenseCourseStillTurnsWide()
+        {
+            var knots = CourseMath.Generate(7, CourseShape.Intense);
+            var positions = new List<double3>();
+            var rotations = new List<quaternion>();
+            CourseMath.Bake(knots, Step, positions, rotations);
+            var tightest = float.MaxValue;
+            const int span = 10;
+            for (var i = span; i < positions.Count - 200; i++)
+            {
+                var a = math.normalize((float3)(positions[i] - positions[i - span]));
+                var b = math.normalize((float3)(positions[i + span] - positions[i]));
+                var angle = math.acos(math.clamp(math.dot(a, b), -1f, 1f));
+                if (angle > 1e-6f)
+                    tightest = math.min(tightest, span * Step / angle);
+            }
+            Assert.Greater(tightest, 1000f, "même intense, pas de virage plus serré qu'un rayon de 1 km");
         }
 
         [Test]
