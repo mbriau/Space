@@ -188,5 +188,48 @@ namespace Space.Presentation.UI
             Add(Delta(candidate.HullBonus, fitted.HullBonus, "coque"));
             return parts.Count == 0 ? null : $"Par rapport à {fitted.Name} : " + string.Join(", ", parts);
         }
+    
+        // ------------------------------------------------------------------ upgrades
+
+        /// <summary>"armes à énergie ou boucliers": what an upgrade fits, in lower case.</summary>
+        public static string UpgradeTargets(UpgradeDefinition upgrade)
+        {
+            var names = new List<string>();
+            foreach (var category in upgrade.Targets)
+                names.Add(CategoryPlural(category).ToLowerInvariant());
+            var text = string.Join(" ou ", names);
+            if (upgrade.RequiresSupercharge)
+                text += " avec surcharge";
+            if (upgrade.RequiresAmmo)
+                text += " à munitions limitées";
+            return text;
+        }
+
+        /// <summary>Names of the upgrades fitted onto an item, or null if it has none.</summary>
+        public static string Upgrades(ShipLoadout loadout, string itemId)
+        {
+            var slots = loadout.UpgradesOf(itemId);
+            if (slots == null)
+                return null;
+            var names = new List<string>();
+            foreach (var id in slots)
+                if (UpgradeCatalog.Get(id) is { } upgrade)
+                    names.Add(upgrade.Name);
+            return names.Count == 0 ? null : string.Join(", ", names);
+        }
+
+        /// <summary>Short tag after an item name that carries upgrades: " [+2]".</summary>
+        public static string UpgradeTag(ShipLoadout loadout, string itemId)
+        {
+            var count = loadout.UpgradeCount(itemId);
+            return count > 0 ? $" [+{count}]" : "";
+        }
+
+        /// <summary>What an upgrade changes on an item, as a short line of differences.</summary>
+        public static string UpgradeEffect(ItemDefinition current, ItemDefinition upgraded)
+        {
+            var comparison = Compare(upgraded, current);
+            return comparison?.Replace($"Par rapport à {current.Name} : ", "");
+        }
     }
 }

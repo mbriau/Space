@@ -16,7 +16,8 @@ namespace Space.Presentation.Game
 {
     /// <summary>
     /// Game flow of a run (M1): sets up a level from its <see cref="LevelDefinition"/>, watches the
-    /// objective, pays the reward and offers the next destinations; on defeat, offers a new run.
+    /// objective, pays the reward, offers one reward out of three (<see cref="RewardScreen"/>) then the next
+    /// destinations; on defeat, offers a new run.
     /// The level itself (spawns, objective, combat) runs in the simulation. The player's ship is
     /// fitted with the run's equipment (<see cref="RunState.Loadout"/>) when it spawns, and the
     /// drones of the loadout join it as escorts.
@@ -32,6 +33,7 @@ namespace Space.Presentation.Game
         public uint BaseSeed = 20261126;
 
         readonly RunState _run = new();
+        readonly RewardScreen _rewards = new();
         LevelDefinition _current;
         LevelStatus _shownStatus;
         bool _started;
@@ -153,7 +155,8 @@ namespace Space.Presentation.Game
                 _run.Credits += _current.RewardCredits;
                 _run.LevelsCompleted++;
                 _run.BetweenLevels = true;
-                _run.RollShop(math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)_run.LevelsCompleted, 0x5109u)));
+                _run.RollRewards(math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)_run.LevelsCompleted, 0x5109u)));
+                _rewards.Reset();
                 SetPaused(true);
             }
             else if (status == LevelStatus.Lost)
@@ -332,6 +335,12 @@ namespace Space.Presentation.Game
 
         void DrawVictory()
         {
+            if (!_run.RewardClaimed)
+            {
+                DrawRewards();
+                return;
+            }
+
             var next = _current.NextLevels;
             var height = 170 + next.Length * 70;
             var area = new Rect((Screen.width - 460) * 0.5f, (Screen.height - height) * 0.5f, 460, height);
@@ -342,8 +351,6 @@ namespace Space.Presentation.Game
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Mon vaisseau (I)", GUILayout.Height(30)))
                 _menus.Open(EquipmentMenus.Page.Ship);
-            if (GUILayout.Button("Magasin (M)", GUILayout.Height(30)))
-                _menus.Open(EquipmentMenus.Page.Shop);
             if (GUILayout.Button("Catalogue (C)", GUILayout.Height(30)))
                 _menus.Open(EquipmentMenus.Page.Catalog);
             GUILayout.EndHorizontal();
@@ -357,6 +364,20 @@ namespace Space.Presentation.Game
                 if (GUILayout.Button(label, _button, GUILayout.Height(60)))
                     StartLevel(destination);
             }
+            GUILayout.EndArea();
+        }
+
+        /// <summary>The choice of one reward out of three, before the next destination.</summary>
+        void DrawRewards()
+        {
+            const float width = 560f;
+            var height = 84f + _rewards.ContentHeight(_run);
+            var area = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            DrawPanel(area);
+            GUILayout.BeginArea(new Rect(area.x + 16, area.y + 12, area.width - 32, area.height - 24));
+            GUILayout.Label("Niveau réussi", _title);
+            GUILayout.Label($"+{_current.RewardCredits} crédits (total {_run.Credits}).", _text);
+            _rewards.Draw(_run);
             GUILayout.EndArea();
         }
 

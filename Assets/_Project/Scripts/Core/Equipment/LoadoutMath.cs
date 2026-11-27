@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace Space.Core.Equipment
 {
-    /// <summary>What a loadout makes of the ship: the numbers applied to the flagship entity.</summary>
+    /// <summary>What a loadout makes of the ship (upgrades included): the numbers applied to the flagship entity.</summary>
     public struct LoadoutStats
     {
         public float Hull;
@@ -48,17 +48,17 @@ namespace Space.Core.Equipment
             var hullBonus = 0f;
             foreach (var id in loadout.Fitted())
             {
-                var item = ItemCatalog.Get(id);
+                var item = loadout.Resolve(id);
                 if (item == null)
                     continue;
                 stats.SpeedFactor *= item.SpeedFactor;
                 hullBonus += item.HullBonus;
             }
 
-            var reactor = ItemCatalog.Get(loadout.Reactor);
-            var shield = ItemCatalog.Get(loadout.Shield);
-            var engine = ItemCatalog.Get(loadout.Engine);
-            var armor = ItemCatalog.Get(loadout.Armor);
+            var reactor = loadout.Resolve(loadout.Reactor);
+            var shield = loadout.Resolve(loadout.Shield);
+            var engine = loadout.Resolve(loadout.Engine);
+            var armor = loadout.Resolve(loadout.Armor);
 
             stats.Hull = math.max(MinHull, (armor?.Hull ?? 0f) + hullBonus);
 
@@ -78,7 +78,7 @@ namespace Space.Core.Equipment
 
             foreach (var id in loadout.Weapons)
             {
-                var item = ItemCatalog.Get(id);
+                var item = loadout.Resolve(id);
                 if (item == null || !ItemCategories.IsWeapon(item.Category))
                     continue;
                 stats.Weapons.Add(item.Weapon);
@@ -87,7 +87,7 @@ namespace Space.Core.Equipment
 
             foreach (var id in loadout.Drones)
             {
-                var item = ItemCatalog.Get(id);
+                var item = loadout.Resolve(id);
                 if (item != null && item.Category == ItemCategory.Drone)
                     stats.Drones.Add(item);
             }

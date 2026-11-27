@@ -6,7 +6,8 @@ namespace Space.Core.Equipment
     /// <summary>
     /// Rolls the offers of a shop: a few items, a little at random, weighted towards the rarity that
     /// suits the progress of the run, never more than two of a category, and always including items
-    /// the player cannot afford yet (something to aim for). Deterministic for a given seed.
+    /// the player cannot afford yet (something to aim for). Items in <c>exclude</c> (those the player
+    /// already owns) are left out. Deterministic for a given seed.
     /// </summary>
     public static class ShopGenerator
     {
@@ -28,12 +29,12 @@ namespace Space.Core.Equipment
         public static int SellPrice(ItemDefinition item) => item == null ? 0 : item.Starter ? 25 : item.Price / 2;
 
         public static List<ItemDefinition> Roll(IReadOnlyList<ItemDefinition> catalog, uint seed, int credits,
-            int levelsCompleted, int count = DefaultOfferCount)
+            int levelsCompleted, int count = DefaultOfferCount, ICollection<string> exclude = null)
         {
             var random = new Random(seed == 0 ? 1u : seed);
             var pool = new List<ItemDefinition>();
             foreach (var item in catalog)
-                if (!item.Starter)
+                if (!item.Starter && (exclude == null || !exclude.Contains(item.Id)))
                     pool.Add(item);
 
             var offers = new List<ItemDefinition>(count);

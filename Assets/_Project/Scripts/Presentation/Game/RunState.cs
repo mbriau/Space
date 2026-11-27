@@ -16,12 +16,19 @@ namespace Space.Presentation.Game
         /// <summary>The player's ship equipment and hold.</summary>
         public ShipLoadout Loadout = ShipLoadout.Starter();
 
-        /// <summary>Offers of the shop open between levels (ids), and those already bought.</summary>
+        /// <summary>Offers of the shop (ids), and those already bought.</summary>
         public List<string> ShopOffers = new();
         public HashSet<string> ShopSold = new();
 
-        /// <summary>The run is between two levels: equipment can be changed and the shop is open.</summary>
+        /// <summary>The run is between two levels: equipment can be changed.</summary>
         public bool BetweenLevels;
+
+        /// <summary>A shop is open (a shop beacon of the sector map, coming with the map). Buying and selling need one.</summary>
+        public bool ShopOpen;
+
+        /// <summary>The offers after the last won level; one can be taken, or all skipped.</summary>
+        public List<RewardOffer> RewardOffers = new();
+        public bool RewardClaimed = true;
 
         public void StartNewRun()
         {
@@ -32,18 +39,72 @@ namespace Space.Presentation.Game
             ShopOffers.Clear();
             ShopSold.Clear();
             BetweenLevels = false;
+            ShopOpen = false;
+            RewardOffers.Clear();
+            RewardClaimed = true;
         }
 
         public void RollShop(uint seed)
         {
             ShopOffers.Clear();
             ShopSold.Clear();
-            foreach (var item in ShopGenerator.Roll(ItemCatalog.All, seed, Credits, LevelsCompleted))
+            var owned = new HashSet<string>(Loadout.Owned());
+            foreach (var item in ShopGenerator.Roll(ItemCatalog.All, seed, Credits, LevelsCompleted, exclude: owned))
                 ShopOffers.Add(item.Id);
         }
 
         public bool CanBuy(ItemDefinition item) =>
-            item != null && BetweenLevels && !ShopSold.Contains(item.Id) && Credits >= item.Price;
+            item != null && BetweenLevels && ShopOpen && !ShopSold.Contains(item.Id) && !Loadout.Owns(item.Id) &&
+            Credits >= item.Price;
+
+        // ------------------------------------------------------------------ rewards
+
+        public void RollRewards(uint seed)
+        {
+            RewardOffers = RewardGenerator.Roll(Loadout, seed, LevelsCompleted);
+            RewardClaimed = RewardOffers.Count == 0;
+        }
+
+        bool TryGetOffer(int index, RewardKind kind, out RewardOffer offer)
+        {
+            offer = default;
+            if (RewardClaimed || index < 0 || index >= RewardOffers.Count || RewardOffers[index].Kind != kind)
+                return false;
+            offer = RewardOffers[index];
+            return true;
+        }
+
+        /// <summary>Takes an item offer: fitted right away if a weapon or drone slot is free, otherwise it goes to the hold.</summary>
+        public bool TakeItemReward(int index)
+        {
+            if (!TryGetOffer(index, RewardKind.Item, out var offer))
+                return false;
+            var item = ItemCatalog.Get(offer.Id);
+            if (item == null || Loadout.Owns(item.Id))
+                return false;
+            Loadout.Hold.Add(item.Id);
+            if (Loadout.HasFreeSlotFor(item))
+                Loadout.EquipFromHold(item.Id);
+            RewardClaimed = true;
+            return true;
+        }
+
+        /// <summary>Takes an upgrade offer and fits it onto an owned item (replacing the upgrade in <paramref name="slot"/> if given).</summary>
+        public bool TakeUpgradeReward(int index, string itemId, int slot = -1)
+        {
+            if (!TryGetOffer(index, RewardKind.Upgrade, out var offer) || !Loadout.InstallUpgrade(itemId, offer.Id, slot))
+                return false;
+            RewardClaimed = true;
+            return true;
+        }
+
+        public void SkipReward()
+        {
+            if (RewardClaimed)
+                return;
+            Credits += RewardGenerator.SkipCredits;
+            RewardClaimed = true;
+        }
 
         /// <summary>Buys an offer: it is fitted right away if a weapon or drone slot is free, otherwise it goes to the hold.</summary>
         public bool Buy(ItemDefinition item)
@@ -60,8 +121,9 @@ namespace Space.Presentation.Game
 
         public bool Sell(string id)
         {
-            if (!BetweenLevels || !Loadout.Hold.Remove(id))
+            if (!BetweenLevels || !ShopOpen || !Loadout.Hold.Remove(id))
                 return false;
+            Loadout.ForgetUpgrades(id);
             Credits += ShopGenerator.SellPrice(ItemCatalog.Get(id));
             return true;
         }
