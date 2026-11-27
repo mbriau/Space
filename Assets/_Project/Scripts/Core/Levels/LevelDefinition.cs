@@ -4,8 +4,9 @@ using UnityEngine;
 namespace Space.Core.Levels
 {
     /// <summary>
-    /// Describes one level without code: environment, ships, objective, reward and the destinations
-    /// offered afterwards. Create with Assets > Create > Space > Level Definition.
+    /// Describes one level without code: environment, ships, objective, reward and links to other
+    /// levels (the sector maps draw their fights from every level linked from the first one).
+    /// Create with Assets > Create > Space > Level Definition.
     /// </summary>
     [CreateAssetMenu(menuName = "Space/Level Definition", fileName = "Level")]
     public class LevelDefinition : ScriptableObject
@@ -35,7 +36,7 @@ namespace Space.Core.Levels
         [Header("Suite")]
         [Min(0)] public int RewardCredits = 100;
 
-        [Tooltip("Two or three destinations offered once the level is won.")]
+        [Tooltip("Other levels: the sector maps draw their fights from every level linked from the first one.")]
         public LevelDefinition[] NextLevels = Array.Empty<LevelDefinition>();
 
         [Serializable]

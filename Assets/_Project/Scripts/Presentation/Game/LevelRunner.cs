@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Space.Core.Combat;
 using Space.Core.Equipment;
 using Space.Core.Levels;
+using Space.Core.Sectors;
 using Space.Core.Ships;
 using Space.Core.Time;
 using Space.Presentation.Controls;
@@ -15,9 +16,11 @@ using UnityEngine;
 namespace Space.Presentation.Game
 {
     /// <summary>
-    /// Game flow of a run (M1): sets up a level from its <see cref="LevelDefinition"/>, watches the
-    /// objective, pays the reward, offers one reward out of three (<see cref="RewardScreen"/>) then the next
-    /// destinations; on defeat, offers a new run.
+    /// Game flow of a run: sets up a level from its <see cref="LevelDefinition"/>, watches the
+    /// objective, pays the reward, offers one reward out of three (<see cref="RewardScreen"/>) then
+    /// the sector map (<see cref="SectorMapScreen"/>), where the player picks the next beacon. Phase 1
+    /// is <see cref="RunState.SectorsInPhase"/> sectors, each a delivery to bring to its exit; on
+    /// defeat, offers a new run.
     /// The level itself (spawns, objective, combat) runs in the simulation. The player's ship is
     /// fitted with the run's equipment (<see cref="RunState.Loadout"/>) when it spawns, and the
     /// drones of the loadout join it as escorts.
@@ -34,6 +37,11 @@ namespace Space.Presentation.Game
 
         readonly RunState _run = new();
         readonly RewardScreen _rewards = new();
+        readonly SectorMapScreen _mapScreen = new();
+        LevelPool _pool;
+
+        /// <summary>Delivery bonus paid by the last exit won, or -1.</summary>
+        int _deliveryBonus = -1;
         LevelDefinition _current;
         LevelStatus _shownStatus;
         bool _started;
@@ -138,8 +146,7 @@ namespace Space.Presentation.Game
                 // Wait for the level sub scene (ship library) to finish streaming in.
                 if (_libraryQuery.IsEmpty || FirstLevel == null)
                     return;
-                _run.StartNewRun();
-                StartLevel(FirstLevel);
+                BeginRun();
                 _started = true;
             }
 
@@ -152,10 +159,19 @@ namespace Space.Presentation.Game
 
             if (status == LevelStatus.Won)
             {
+                var beacon = _run.Sector.CurrentBeacon;
                 _run.Credits += _current.RewardCredits;
                 _run.LevelsCompleted++;
                 _run.BetweenLevels = true;
-                _run.RollRewards(math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)_run.LevelsCompleted, 0x5109u)));
+                _deliveryBonus = -1;
+                if (_run.Sector.AtExit)
+                {
+                    _deliveryBonus = _run.Sector.CurrentBonus;
+                    _run.Credits += _deliveryBonus;
+                    _run.SectorDone = true;
+                }
+                _run.RollRewards(math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)_run.LevelsCompleted, 0x5109u)),
+                    beacon.Kind == BeaconKind.Elite);
                 _rewards.Reset();
                 SetPaused(true);
             }
@@ -194,11 +210,42 @@ namespace Space.Presentation.Game
             }
         }
 
+        /// <summary>A new run: the first sector's map, its start being the first level (with its intro).</summary>
+        void BeginRun()
+        {
+            _run.StartNewRun();
+            _pool = LevelPool.Collect(FirstLevel);
+            _run.StartSector(SectorSeed(0), _pool.Count);
+            _deliveryBonus = -1;
+            StartLevel(FirstLevel);
+        }
+
+        uint SectorSeed(int sector) => math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)sector, 0x5EC7u));
+
+        /// <summary>Jumps to a beacon of the map: a fight starts there, or a shop opens.</summary>
+        void JumpTo(int beaconIndex)
+        {
+            if (!_run.Sector.Jump(beaconIndex))
+                return;
+            _run.ShopOpen = false;
+            var beacon = _run.Sector.CurrentBeacon;
+            if (beacon.Kind == BeaconKind.Shop)
+            {
+                _run.ShopOpen = true;
+                _run.RollShop(math.hash(new uint4(BaseSeed, (uint)_run.RunIndex, (uint)_run.SectorIndex * 64u + (uint)beaconIndex, 0x5109u)));
+                return;
+            }
+            var level = _pool.ForBeacon(beacon);
+            if (level != null)
+                StartLevel(level);
+        }
+
         void StartLevel(LevelDefinition level)
         {
             var em = _world.EntityManager;
             _current = level;
             _run.BetweenLevels = false;
+            _run.ShopOpen = false;
             if (_menus != null && _menus.IsOpen)
                 _menus.Close();
 
@@ -336,33 +383,66 @@ namespace Space.Presentation.Game
         void DrawVictory()
         {
             if (!_run.RewardClaimed)
-            {
                 DrawRewards();
-                return;
-            }
+            else if (_run.SectorDone)
+                DrawDelivery();
+            else
+                DrawMap();
+        }
 
-            var next = _current.NextLevels;
-            var height = 170 + next.Length * 70;
-            var area = new Rect((Screen.width - 460) * 0.5f, (Screen.height - height) * 0.5f, 460, height);
+        /// <summary>The sector map: where to jump next, the delivery deadline, the ship and the shop.</summary>
+        void DrawMap()
+        {
+            var sector = _run.Sector;
+            var width = Mathf.Min(SectorMapScreen.Width, Screen.width - 20f);
+            var height = Mathf.Min(SectorMapScreen.Height + 90f, Screen.height - 70f);
+            var area = new Rect((Screen.width - width) * 0.5f, Mathf.Max(64f, (Screen.height - height) * 0.5f), width, height);
+            DrawPanel(area);
+
+            GUILayout.BeginArea(new Rect(area.x + 16, area.y + 10, area.width - 32, 80));
+            var where = sector.CurrentBeacon.Kind == BeaconKind.Shop ? " · Station marchande : magasin ouvert" : "";
+            GUILayout.Label($"Secteur {_run.SectorIndex + 1} / {RunState.SectorsInPhase}{where}", _title);
+            var late = sector.Jumps > sector.Deadline ? " (en retard)" : "";
+            GUILayout.Label($"Livraison : {sector.Jumps} / {sector.Deadline} sauts{late} · prime actuelle {sector.CurrentBonus} cr, " +
+                            $"−{SectorRun.BonusLostPerLateJump} cr par saut de retard · crédits {_run.Credits}", _text);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Mon vaisseau (I)", GUILayout.Height(26)))
+                _menus.Open(EquipmentMenus.Page.Ship);
+            if (_run.ShopOpen && GUILayout.Button("Magasin (M)", GUILayout.Height(26)))
+                _menus.Open(EquipmentMenus.Page.Shop);
+            if (GUILayout.Button("Catalogue (C)", GUILayout.Height(26)))
+                _menus.Open(EquipmentMenus.Page.Catalog);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+
+            var mapArea = new Rect(area.x, area.y + 90f, area.width, area.height - 90f);
+            var clicked = _mapScreen.Draw(mapArea, _run, _pool);
+            if (clicked >= 0)
+                JumpTo(clicked);
+        }
+
+        /// <summary>The cargo is delivered: on to the next sector, or the end of phase 1.</summary>
+        void DrawDelivery()
+        {
+            var area = new Rect((Screen.width - 460) * 0.5f, (Screen.height - 220) * 0.5f, 460, 220);
             DrawPanel(area);
             GUILayout.BeginArea(new Rect(area.x + 16, area.y + 12, area.width - 32, area.height - 24));
-            GUILayout.Label("Niveau réussi", _title);
-            GUILayout.Label($"+{_current.RewardCredits} crédits (total {_run.Credits}). Avant de repartir :", _text);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Mon vaisseau (I)", GUILayout.Height(30)))
-                _menus.Open(EquipmentMenus.Page.Ship);
-            if (GUILayout.Button("Catalogue (C)", GUILayout.Height(30)))
-                _menus.Open(EquipmentMenus.Page.Catalog);
-            GUILayout.EndHorizontal();
-            GUILayout.Space(6);
-            GUILayout.Label("Où aller ensuite ?", _text);
-            foreach (var destination in next)
+            GUILayout.Label("Livraison effectuée", _title);
+            var sector = _run.Sector;
+            GUILayout.Label($"{sector.Jumps} sauts pour un délai de {sector.Deadline} : prime de {Mathf.Max(0, _deliveryBonus)} crédits " +
+                            $"(total {_run.Credits}).", _text);
+            GUILayout.Space(8);
+            if (_run.PhaseComplete)
             {
-                if (destination == null)
-                    continue;
-                var label = $"{destination.DisplayName} ({destination.Environment})\n{destination.Description}";
-                if (GUILayout.Button(label, _button, GUILayout.Height(60)))
-                    StartLevel(destination);
+                GUILayout.Label("Fin de la phase 1 pour l'instant : le niveau de transition viendra plus tard.", _text);
+                if (GUILayout.Button("Nouvelle partie", _button, GUILayout.Height(40)))
+                    BeginRun();
+            }
+            else if (GUILayout.Button($"Secteur suivant ({_run.SectorIndex + 2} / {RunState.SectorsInPhase})", _button, GUILayout.Height(40)))
+            {
+                _run.NextSector(SectorSeed(_run.SectorIndex + 1), _pool.Count);
             }
             GUILayout.EndArea();
         }
@@ -371,12 +451,13 @@ namespace Space.Presentation.Game
         void DrawRewards()
         {
             const float width = 560f;
-            var height = 84f + _rewards.ContentHeight(_run);
+            var height = 100f + _rewards.ContentHeight(_run);
             var area = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             DrawPanel(area);
             GUILayout.BeginArea(new Rect(area.x + 16, area.y + 12, area.width - 32, area.height - 24));
             GUILayout.Label("Niveau réussi", _title);
-            GUILayout.Label($"+{_current.RewardCredits} crédits (total {_run.Credits}).", _text);
+            var delivery = _deliveryBonus >= 0 ? $" Livraison : +{_deliveryBonus} crédits de prime." : "";
+            GUILayout.Label($"+{_current.RewardCredits} crédits (total {_run.Credits}).{delivery}", _text);
             _rewards.Draw(_run);
             GUILayout.EndArea();
         }
@@ -398,10 +479,7 @@ namespace Space.Presentation.Game
                             $"et {_run.Credits} crédits.", _text);
             GUILayout.Space(8);
             if (GUILayout.Button("Nouvelle partie", _button, GUILayout.Height(40)))
-            {
-                _run.StartNewRun();
-                StartLevel(FirstLevel);
-            }
+                BeginRun();
             GUILayout.EndArea();
         }
     }
