@@ -57,7 +57,7 @@ namespace Space.Editor.Placeholders
         public static readonly Dictionary<string, string> Designs = new()
         {
             { "Cargo", "remorqueur" },          // the player's ship
-            { "Raider", "colporteur" },         // pirate raider: an armed merchant gone bad
+            { "Raider", "forcebadger35" },      // pirate raider: Ultimate Spaceships Creator model (ShipArtLibrary)
             { "PirateFighter", "heron-chasseur" },
         };
 
@@ -143,10 +143,25 @@ namespace Space.Editor.Placeholders
         /// </summary>
         static int[] GenerateFromDesign(ShipClass shipClass, string designId)
         {
-            var design = Space.Presentation.Ships.ShipDesigns.Get(designId)
-                         ?? throw new System.ArgumentException($"Design inconnu : {designId}");
-            var model = Space.Presentation.Ships.ShipGenerator.Generate(design);
-            var bounds = model.Bounds;
+            // A hangar design, or a model prefab registered in the ship art library.
+            Bounds bounds;
+            int triangleCount;
+            var design = Space.Presentation.Ships.ShipDesigns.Get(designId);
+            var art = Space.Presentation.Ships.ShipArtLibrary.For(designId);
+            if (design != null)
+            {
+                var generated = Space.Presentation.Ships.ShipGenerator.Generate(design.Value);
+                bounds = generated.Bounds;
+                triangleCount = generated.Hull.Indices.Count / 3;
+            }
+            else if (art != null && art.Model != null)
+            {
+                bounds = Space.Editor.ShipArt.ShipArtBuilder.ModelBounds(art, out triangleCount);
+            }
+            else
+            {
+                throw new System.ArgumentException($"Design inconnu : {designId} (ni design du hangar ni modèle dans ShipArtLibrary)");
+            }
 
             var root = new GameObject(shipClass.Name);
             try
@@ -158,7 +173,8 @@ namespace Space.Editor.Placeholders
                 ship.Acceleration = shipClass.Acceleration;
                 ship.TurnRateDegrees = shipClass.TurnRate;
                 ConfigureCombat(ship, shipClass.Name);
-                if (ship.ShieldMax > 0f)
+                // A ready-made model carries its own shield aura (ShipArtModel): no bubble.
+                if (ship.ShieldMax > 0f && (art == null || art.Model == null))
                     AddShieldBubble(root, bounds);
 
                 PrefabUtility.SaveAsPrefabAsset(root, $"{Root}/Prefabs/{shipClass.Name}.prefab");
@@ -168,8 +184,7 @@ namespace Space.Editor.Placeholders
                 Object.DestroyImmediate(root);
             }
 
-            var triangles = model.Hull.Indices.Count / 3;
-            return new[] { triangles, triangles, triangles };
+            return new[] { triangleCount, triangleCount, triangleCount };
         }
 
         /// <summary>
@@ -289,13 +304,12 @@ namespace Space.Editor.Placeholders
                     ship.Weapons.Add(Draw(Cannon(450f, 85f, 5f, ammo: 8), 2));
                     break;
                 case "Raider":
-                    // Pirate raider, a little smaller than the Cargo and about as fast: the same toolkit.
+                    // Pirate raider: a light ship that comes in pairs. One cannon, a weak shield, a thin hull.
                     ship.Team = ShipAuthoring.TeamId.Pirates;
-                    ship.Hull = 320f;
-                    ShieldStats(120f, 1.5f, reboot: 10f);
-                    Power(7, 4, 3, 3, 1);
-                    ship.Weapons.Add(Draw(Laser(480f, 48f, 10f, 6.5f), 3));
-                    ship.Weapons.Add(Draw(Cannon(430f, 70f, 5.5f, ammo: 7), 1));
+                    ship.Hull = 170f;
+                    ShieldStats(60f, 1.2f, reboot: 10f);
+                    Power(5, 3, 3, 2, 2);
+                    ship.Weapons.Add(Draw(Cannon(520f, 45f, 6f), 1));
                     break;
                 case "PirateFighter":
                     ship.Team = ShipAuthoring.TeamId.Pirates;

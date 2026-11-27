@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Space.Presentation.Ships;
+using AuraShape = Space.Presentation.Ships.AuraShape;
 using UnityEditor;
 using UnityEngine;
 
@@ -67,10 +68,130 @@ namespace Space.Editor.ShipArt
                     new Vector3(-0.06f, 0.05f, -0.30f), new Vector3(0.06f, 0.14f, -0.17f)),
             });
 
+        /// <summary>Ready-made models of the asset packs, by id: prefab path and scale (nose along +Z).</summary>
+        public static readonly (string Id, string Prefab, float Scale)[] Models =
+        {
+            ("forcebadger35", "Assets/UltimateSpaceshipsCreator/Prefabs/Examples/ForceBadger/ForceBadger35.prefab", 3f),
+        };
+
         [MenuItem("Space/Build Ship Art")]
         public static void BuildAll()
         {
             Build(Remorqueur);
+            foreach (var (id, prefab, scale) in Models)
+                RegisterModel(id, prefab, scale);
+        }
+
+        /// <summary>Registers a ready-made model prefab under an id in the <see cref="ShipArtLibrary"/>.</summary>
+        public static void RegisterModel(string id, string prefabPath, float scale)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null)
+            {
+                Debug.LogError($"Modèle introuvable : {prefabPath}");
+                return;
+            }
+            var art = new Space.Presentation.Ships.ShipArt { DesignId = id, Model = prefab, ModelScale = scale };
+            var bounds = ModelBounds(art, out _);
+            art.TurretSize = bounds.size.z * 0.06f;
+            art.Slots.Add(TopOfHull(prefab, scale, 0f, bounds));
+            art.Aura = AuraFromColliders(prefab, scale);
+
+            var library = LoadOrCreateLibrary();
+            library.Ships.RemoveAll(s => s == null || s.DesignId == id);
+            library.Ships.Add(art);
+            EditorUtility.SetDirty(library);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"{id} : {bounds.size} m, emplacement {art.Slots[0]}, aura de {art.Aura.Count} forme(s)");
+        }
+
+        /// <summary>
+        /// A turret slot on top of a model: the highest point of the hull along the centre line, at
+        /// <paramref name="share"/> of the length from the middle (+ forward).
+        /// </summary>
+        static Vector3 TopOfHull(GameObject prefab, float scale, float share, Bounds bounds)
+        {
+            var z = bounds.center.z + share * bounds.size.z;
+            var top = float.NegativeInfinity;
+            foreach (var filter in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null)
+                    continue;
+                var matrix = Matrix4x4.Scale(Vector3.one * scale) * prefab.transform.worldToLocalMatrix * filter.transform.localToWorldMatrix;
+                foreach (var vertex in filter.sharedMesh.vertices)
+                {
+                    var p = matrix.MultiplyPoint3x4(vertex);
+                    if (Mathf.Abs(p.x - bounds.center.x) < bounds.size.x * 0.08f && Mathf.Abs(p.z - z) < bounds.size.z * 0.06f)
+                        top = Mathf.Max(top, p.y);
+                }
+            }
+            return new Vector3(bounds.center.x, float.IsNegativeInfinity(top) ? bounds.max.y : top, z);
+        }
+
+        /// <summary>
+        /// The shield aura of a model: one ellipsoid per collider of the prefab (sphere, capsule or box),
+        /// a little larger than the collider, in ship space.
+        /// </summary>
+        static List<AuraShape> AuraFromColliders(GameObject prefab, float scale)
+        {
+            const float margin = 1.12f;
+            var shapes = new List<AuraShape>();
+            foreach (var collider in prefab.GetComponentsInChildren<Collider>(true))
+            {
+                var toShip = Matrix4x4.Scale(Vector3.one * scale) * prefab.transform.worldToLocalMatrix * collider.transform.localToWorldMatrix;
+                var lossy = toShip.lossyScale;
+                Vector3 center, size;
+                switch (collider)
+                {
+                    case SphereCollider sphere:
+                        center = sphere.center;
+                        size = Vector3.one * sphere.radius * 2f;
+                        break;
+                    case CapsuleCollider capsule:
+                        center = capsule.center;
+                        size = Vector3.one * capsule.radius * 2f;
+                        size[capsule.direction] = Mathf.Max(capsule.height, capsule.radius * 2f);
+                        break;
+                    case BoxCollider box:
+                        // The ellipsoid around a box: its half-diagonals, a little rounder.
+                        center = box.center;
+                        size = box.size * 1.3f;
+                        break;
+                    default:
+                        continue;
+                }
+                shapes.Add(new AuraShape
+                {
+                    Center = toShip.MultiplyPoint3x4(center),
+                    Size = Vector3.Scale(size, lossy) * margin,
+                    Euler = toShip.rotation.eulerAngles,
+                });
+            }
+            return shapes;
+        }
+
+        /// <summary>Bounds of a model art once scaled, in ship space, and its triangle count.</summary>
+        public static Bounds ModelBounds(Space.Presentation.Ships.ShipArt art, out int triangles)
+        {
+            triangles = 0;
+            var bounds = new Bounds(Vector3.zero, Vector3.zero);
+            var first = true;
+            foreach (var filter in art.Model.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null)
+                    continue;
+                triangles += filter.sharedMesh.triangles.Length / 3;
+                var matrix = Matrix4x4.Scale(Vector3.one * art.ModelScale) * art.Model.transform.worldToLocalMatrix * filter.transform.localToWorldMatrix;
+                var b = filter.sharedMesh.bounds;
+                for (var i = 0; i < 8; i++)
+                {
+                    var corner = b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    var p = matrix.MultiplyPoint3x4(corner);
+                    if (first) { bounds = new Bounds(p, Vector3.zero); first = false; }
+                    else bounds.Encapsulate(p);
+                }
+            }
+            return bounds;
         }
 
         public static void Build(ShipSpec spec)

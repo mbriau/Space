@@ -181,8 +181,8 @@ namespace Space.Core.Combat
                     // The miss passes beside the target.
                     var direction = distance > 1e-3f ? toTarget / distance : new float3(0f, 0f, 1f);
                     var side = math.normalizesafe(math.cross(direction, math.up()), new float3(1f, 0f, 0f));
-                    var lateral = (radius * 1.2f + random.NextFloat(0f, radius * 2f)) * (random.NextBool() ? 1f : -1f);
-                    impact += (double3)(side * lateral + direction * random.NextFloat(0f, radius * 3f));
+                    var miss = WeaponMath.MissOffset(radius, random.NextFloat(), random.NextFloat(), random.NextFloat());
+                    impact += (double3)(side * miss.x + direction * miss.y);
                 }
 
                 var damageFactor = WeaponMath.DamageFactor(weapon.Supercharged, weapon.SuperchargeDamageFactor);
@@ -194,6 +194,7 @@ namespace Space.Core.Combat
                     Type = weapon.Type,
                     Damage = weapon.Damage * damageFactor,
                     ShieldDamage = weapon.ShieldDamage * damageFactor,
+                    From = from,
                 });
                 Shots.Add(new ShotEvent
                 {

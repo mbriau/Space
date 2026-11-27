@@ -250,6 +250,7 @@ namespace Space.Presentation.Game
                     DelayTicks = (uint)math.round(enemy.DelaySeconds * ticksPerSecond),
                     Distance = enemy.Distance,
                     AngleDegrees = enemy.AngleDegrees,
+                    Along = enemy.Along,
                 });
             }
 

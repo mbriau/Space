@@ -135,6 +135,14 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
   (Silas) : `CommsChannel` filme chaque prefab `Portrait_*` (créé par `PortraitBuilder`) dans une texture, loin
   sous la bataille. Le cadre gris descend, puis l'image apparaît ; liseré de couleur pendant que le personnage
   parle ; sous-titres phrase par phrase. HUD et contrôles coupés (`UiFocus.Cinematic`).
+- Les deux raiders arrivent l'un devant, l'autre derrière et un peu plus loin (`EnemySpawn.Along`, en mètres le
+  long du cap). Raider : un seul canon (sur le dessus), bouclier 60, coque 170 ; dessiné avec le modèle
+  `ForceBadger35` d'Ultimate Spaceships Creator agrandi ×3 (`ShipArtBuilder.Models`, enregistré dans
+  `ShipArtLibrary` ; l'IA allume ses canons même contre un bouclier quand elle n'a pas d'arme à énergie).
+- Bouclier des modèles prêts à l'emploi : une aura à peine visible faite d'ellipsoïdes tirées de leurs colliders
+  (shader `Space/ShieldAura`), qui suit la charge et s'illumine à l'impact. Tout tir sur un bouclier laisse un
+  éclair électrique animé à l'endroit touché, du côté d'où vient le tir (`Space/ElectricArc`, `ImpactEffects`).
+- Tirs manqués : ils passent juste à côté de la coque (`WeaponMath.MissOffset`, testé).
 - Plans et rythmes : `IntroMath` (testé). Répliques : `Audio/Voix/Pilote` (histoire, détection, appel) et
   `Audio/Voix/Pirate`, chacune avec son texte (`.txt`, sous-titre) et sa piste Rhubarb.
 

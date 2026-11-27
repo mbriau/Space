@@ -36,8 +36,9 @@ namespace Space.Editor.Game
             level.Description = "Deux raiders pirates sortent d'hyperespace sur ta route.";
             level.Enemies = new[]
             {
-                new LevelDefinition.EnemySpawn { Ship = "Raider", DelaySeconds = 3.4f, Distance = 650f, AngleDegrees = -35f },
-                new LevelDefinition.EnemySpawn { Ship = "Raider", DelaySeconds = 4.4f, Distance = 650f, AngleDegrees = -35f },
+                // The first ahead, the second astern and a little further out (within half its cannon's range).
+                new LevelDefinition.EnemySpawn { Ship = "Raider", DelaySeconds = 3.4f, Distance = 190f, AngleDegrees = -35f, Along = 130f },
+                new LevelDefinition.EnemySpawn { Ship = "Raider", DelaySeconds = 4.4f, Distance = 260f, AngleDegrees = -35f, Along = -110f },
             };
             EditorUtility.SetDirty(level);
             AssetDatabase.SaveAssets();

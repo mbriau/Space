@@ -26,11 +26,14 @@ namespace Space.Presentation.Game
         /// <summary>Where the flyover starts: low behind the ship, a little to the side.</summary>
         public static readonly Vector3 FlyoverStart = new(0.9f, 0.35f, -6f);
 
-        /// <summary>Where it ends: above the ship, slightly astern, looking down along the hull.</summary>
-        public static readonly Vector3 FlyoverEnd = new(0f, 3.2f, -1.3f);
+        /// <summary>
+        /// Where it ends: close above the stern, looking far ahead along the course, our ship in the
+        /// bottom of the picture as if we stood on it.
+        /// </summary>
+        public static readonly Vector3 FlyoverEnd = new(0f, 1.4f, -1.9f);
 
         /// <summary>The curve bends over the ship rather than through it.</summary>
-        static readonly Vector3 FlyoverBend = new(0.5f, 1.6f, -2.2f);
+        static readonly Vector3 FlyoverBend = new(0.5f, 1.5f, -3.4f);
 
         /// <summary>Camera position of the flyover at <paramref name="t"/> (0 to 1), in ship radii.</summary>
         public static Vector3 FlyoverPosition(float t)
@@ -41,8 +44,8 @@ namespace Space.Presentation.Game
             return Vector3.Lerp(a, b, s);
         }
 
-        /// <summary>Point the flyover looks at: from just ahead of the ship to further down its course.</summary>
-        public static Vector3 FlyoverLook(float t) => Vector3.Lerp(new Vector3(0f, 0f, 1.5f), new Vector3(0f, -0.4f, 0.5f), Ease(t));
+        /// <summary>Point the flyover looks at: the ship at first, then far down its course.</summary>
+        public static Vector3 FlyoverLook(float t) => Vector3.Lerp(new Vector3(0f, 0f, 1.5f), new Vector3(0f, -1.5f, 14f), Ease(t));
 
         /// <summary>
         /// Heading of the camera looking for contacts, in degrees from the ship's course (+ = right):

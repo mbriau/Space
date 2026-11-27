@@ -88,6 +88,9 @@ namespace Space.Core.Levels
         public float Distance;
         public float AngleDegrees;
 
+        /// <summary>Enemy: station along the course, in metres (+ ahead, - astern; 0 = automatic spread).</summary>
+        public float Along;
+
         /// <summary>Formation offset in the flagship's frame (Escort).</summary>
         public float3 Offset;
 

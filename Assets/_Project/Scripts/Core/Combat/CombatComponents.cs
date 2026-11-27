@@ -250,6 +250,9 @@ namespace Space.Core.Combat
         public DamageType Type;
         public float Damage;
         public float ShieldDamage;
+
+        /// <summary>Where the shot was fired from (presentation: the side of the shield it strikes).</summary>
+        public double3 From;
     }
 
     /// <summary>An impact this tick, for presentation (explosion size, shield flash, camera shake).</summary>
@@ -262,6 +265,10 @@ namespace Space.Core.Combat
         public bool ShieldWasUp;
         public byte TargetTeam;
         public float TargetRadius;
+
+        /// <summary>The ship hit, and where the shot came from (presentation: shield hit effects).</summary>
+        public Entity Target;
+        public double3 From;
     }
 
     /// <summary>Tag on the singleton entity holding the <see cref="ShotEvent"/> buffer.</summary>

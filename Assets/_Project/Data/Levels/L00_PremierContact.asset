@@ -23,12 +23,14 @@ MonoBehaviour:
   Enemies:
   - Ship: Raider
     DelaySeconds: 3.4
-    Distance: 650
+    Distance: 190
     AngleDegrees: -35
+    Along: 130
   - Ship: Raider
     DelaySeconds: 4.4
-    Distance: 650
+    Distance: 260
     AngleDegrees: -35
+    Along: -110
   RewardCredits: 150
   NextLevels:
   - {fileID: 11400000, guid: e70ea8c0e951a2f47be88f9fd78fef4a, type: 2}

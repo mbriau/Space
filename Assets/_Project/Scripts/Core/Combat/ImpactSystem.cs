@@ -71,6 +71,8 @@ namespace Space.Core.Combat
                     ShieldWasUp = shieldWasUp,
                     TargetTeam = teams.HasComponent(target) ? teams[target].Value : (byte)0,
                     TargetRadius = radii.HasComponent(target) ? radii[target].Value : 10f,
+                    Target = target,
+                    From = projectile.From,
                 });
             }
         }

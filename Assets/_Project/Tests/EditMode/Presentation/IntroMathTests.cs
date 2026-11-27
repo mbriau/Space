@@ -12,7 +12,9 @@ namespace Space.Presentation.Tests
             Assert.AreEqual(IntroMath.FlyoverStart, IntroMath.FlyoverPosition(0f));
             Assert.AreEqual(IntroMath.FlyoverEnd, IntroMath.FlyoverPosition(1f));
             Assert.Less(IntroMath.FlyoverStart.z, -3f, "départ derrière");
-            Assert.Greater(IntroMath.FlyoverEnd.y, 2f, "arrivée au-dessus");
+            Assert.Greater(IntroMath.FlyoverEnd.y, 1f, "arrivée au-dessus");
+            var look = IntroMath.FlyoverLook(1f) - IntroMath.FlyoverEnd;
+            Assert.Less(Vector3.Angle(look, Vector3.forward), 15f, "on regarde au loin, devant le vaisseau");
             // Never through the hull: always above it once level with the ship.
             for (var t = 0f; t <= 1f; t += 0.05f)
             {

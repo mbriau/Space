@@ -230,10 +230,16 @@ namespace Space.Presentation.Game
                 channel?.Tick(Time.deltaTime);
 
             if (Playing && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            {
-                Stop();
-                Finish();
-            }
+                Skip();
+        }
+
+        /// <summary>Ends the intro at once and starts the fight (Escape).</summary>
+        public void Skip()
+        {
+            if (!Playing)
+                return;
+            Stop();
+            Finish();
         }
 
         void OnDestroy()

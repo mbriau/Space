@@ -102,6 +102,21 @@ namespace Space.Core.Tests
         }
 
         [Test]
+        public void AMissPassesJustBesideTheHull()
+        {
+            const float radius = 20f;
+            for (var a = 0f; a < 1f; a += 0.1f)
+            for (var b = 0f; b < 1f; b += 0.1f)
+            {
+                var miss = WeaponMath.MissOffset(radius, a, b, b);
+                Assert.That(math.abs(miss.x), Is.InRange(radius * 1.05f, radius * 1.5f + 1e-3f), "à côté de la coque, pas loin");
+                Assert.That(miss.y, Is.InRange(-radius * 0.5f, radius + 1e-3f));
+            }
+            Assert.Less(WeaponMath.MissOffset(radius, 0.2f, 0.5f, 0.5f).x, 0f, "à gauche");
+            Assert.Greater(WeaponMath.MissOffset(radius, 0.8f, 0.5f, 0.5f).x, 0f, "à droite");
+        }
+
+        [Test]
         public void ShotsAreReproducible()
         {
             var a = WeaponMath.ShotRandom(42, 100, 7, 0).NextFloat();

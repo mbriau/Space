@@ -146,7 +146,7 @@ namespace Space.Core.Levels
                         foreach (var weapon in em.GetBuffer<Weapon>(entity))
                             longestRange = math.max(longestRange, weapon.Range);
                     var distance = Engagement.StationDistance(spawn.Distance, longestRange);
-                    var station = Engagement.EnemyStation(enemyIndex, distance, spawn.AngleDegrees);
+                    var station = Engagement.EnemyStation(enemyIndex, distance, spawn.AngleDegrees, spawn.Along);
                     var leader = Flagship();
                     if (leader != Entity.Null)
                     {
