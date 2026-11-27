@@ -34,6 +34,34 @@ namespace Space.Core.Levels
         public float CruiseSpeed;
     }
 
+    /// <summary>
+    /// Scripted pause of the level, set by the presentation during an intro (camera flyover,
+    /// dialogue): the same order for every player, like the power grid. Lives on the
+    /// <see cref="LevelState"/> entity.
+    /// </summary>
+    public struct LevelHold : IComponentData
+    {
+        /// <summary>The level clock stands still: no enemy arrives and the survival timer waits.</summary>
+        public bool Clock;
+
+        /// <summary>No weapon fires (they still charge).</summary>
+        public bool CeaseFire;
+    }
+
+    /// <summary>The level clock while it is held. Pure functions, unit tested.</summary>
+    public static class LevelHoldMath
+    {
+        /// <summary>
+        /// One held tick: the start and the end of the level slide one tick later, so every delay
+        /// (enemy arrivals, survival time) is counted from when the clock runs again.
+        /// </summary>
+        public static void HoldOneTick(ref LevelState level)
+        {
+            level.StartTick++;
+            level.EndTick++;
+        }
+    }
+
     public enum SpawnRole : byte
     {
         /// <summary>The player's main ship.</summary>

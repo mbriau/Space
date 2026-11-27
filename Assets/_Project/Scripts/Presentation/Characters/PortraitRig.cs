@@ -69,6 +69,9 @@ namespace Space.Presentation.Characters
         /// <summary>Brightness of the whole portrait (a dialogue dims whoever is listening).</summary>
         [Range(0f, 1f)] public float Brightness = 1f;
 
+        /// <summary>How far into the current line the voice is, in seconds.</summary>
+        public float SpokenSeconds => _audio != null && _audio.isPlaying ? _audio.time : 0f;
+
         /// <summary>The voice line is playing.</summary>
         public bool IsSpeaking => _audio != null && _audio.isPlaying;
 
@@ -86,6 +89,22 @@ namespace Space.Presentation.Characters
                     _mouths[mouth.Shape] = mouth.Texture;
             _nextPlay = Time.time + FirstDelay;
             _nextBlink = Time.time + UnityEngine.Random.Range(BlinkInterval.x, BlinkInterval.y);
+        }
+
+        /// <summary>Says another line: its audio and its Rhubarb lip-sync track.</summary>
+        public void Speak(AudioClip line, TextAsset lipSync)
+        {
+            Line = line;
+            LipSync = lipSync;
+            _track = LipSyncTrack.Parse(lipSync != null ? lipSync.text : null);
+            Speak();
+        }
+
+        /// <summary>Stops talking at once (skipped scene).</summary>
+        public void StopSpeaking()
+        {
+            if (_audio != null)
+                _audio.Stop();
         }
 
         /// <summary>Plays the voice line now (the mouth follows it).</summary>

@@ -80,7 +80,7 @@ namespace Space.Presentation.UI
         void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard == null || Runner == null || !Runner.HasStarted)
+            if (keyboard == null || Runner == null || !Runner.HasStarted || UiFocus.Cinematic)
                 return;
             if (keyboard.iKey.wasPressedThisFrame) Toggle(Page.Ship);
             if (keyboard.cKey.wasPressedThisFrame) Toggle(Page.Catalog);

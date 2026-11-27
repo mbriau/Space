@@ -13,17 +13,22 @@ MonoBehaviour:
   m_Name: L00_PremierContact
   m_EditorClassIdentifier: Space.Core::Space.Core.Levels.LevelDefinition
   DisplayName: Premier contact
-  Description: Un raider pirate sort d'hyperespace sur ta route. Un contre un.
+  Description: Deux raiders pirates sortent d'hyperespace sur ta route.
   Environment: Espace profond
   SurviveSeconds: 300
   WinWhenEnemiesDestroyed: 1
+  CruiseSpeed: 15
   Flagship: Cargo
   Escorts: []
   Enemies:
   - Ship: Raider
-    DelaySeconds: 4
+    DelaySeconds: 3.4
     Distance: 650
-    AngleDegrees: 35
+    AngleDegrees: -35
+  - Ship: Raider
+    DelaySeconds: 4.4
+    Distance: 650
+    AngleDegrees: -35
   RewardCredits: 150
   NextLevels:
   - {fileID: 11400000, guid: e70ea8c0e951a2f47be88f9fd78fef4a, type: 2}

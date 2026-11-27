@@ -12,6 +12,12 @@ namespace Space.Presentation.UI
     {
         public static bool MenuOpen;
 
+        /// <summary>A scripted sequence (level intro) is playing: no HUD, no controls.</summary>
+        public static bool Cinematic;
+
+        /// <summary>World controls (selection, orders, camera, power, time) are off.</summary>
+        public static bool BlocksWorld => MenuOpen || Cinematic;
+
         static readonly List<Rect> HudRects = new();
         static int _hudFrame = -1;
 

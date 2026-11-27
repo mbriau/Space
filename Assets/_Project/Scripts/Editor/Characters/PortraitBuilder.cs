@@ -89,13 +89,28 @@ namespace Space.Editor.Characters
             BuildAll();
         }
 
-        /// <summary>Patches of every character and both demo scenes (the dialogue stays open).</summary>
+        /// <summary>Patches of every character, their prefabs and both demo scenes (the dialogue stays open).</summary>
         public static void BuildAll()
         {
             BuildPatches(Pilote);
             BuildPatches(Pirate);
+            BuildPrefab(Pilote);
+            BuildPrefab(Pirate);
             BuildSingleScene(Pilote, PiloteScene);
             BuildDialogueScene();
+        }
+
+        /// <summary>Prefab path of a character's talking portrait (used by the level intro's comms).</summary>
+        public static string PrefabPath(Character character) => $"{character.Folder}/Portrait_{Path.GetFileName(character.Folder)}.prefab";
+
+        /// <summary>The talking portrait as a prefab: rig and layers, silent until told to speak.</summary>
+        public static GameObject BuildPrefab(Character character)
+        {
+            var rig = AddPortrait(character, Vector3.zero);
+            rig.AutoPlay = false;
+            var prefab = PrefabUtility.SaveAsPrefabAsset(rig.gameObject, PrefabPath(character));
+            Object.DestroyImmediate(rig.gameObject);
+            return prefab;
         }
 
         public static void BuildPatches(Character character)

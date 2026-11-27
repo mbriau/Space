@@ -41,12 +41,14 @@ namespace Space.Core.Combat
         {
             var time = SystemAPI.GetSingleton<SimulationTime>();
             var seed = SystemAPI.TryGetSingleton<LevelState>(out var level) ? level.RunSeed : 1u;
+            var ceaseFire = SystemAPI.TryGetSingleton<LevelHold>(out var hold) && hold.CeaseFire;
 
             var job = new FireJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
                 Tick = time.Tick,
                 Seed = seed,
+                CeaseFire = ceaseFire,
                 Entities = _targets.ToEntityArray(state.WorldUpdateAllocator),
                 Teams = _targets.ToComponentDataArray<Team>(state.WorldUpdateAllocator),
                 Positions = _targets.ToComponentDataArray<SimPosition>(state.WorldUpdateAllocator),
@@ -66,6 +68,9 @@ namespace Space.Core.Combat
             public float DeltaTime;
             public uint Tick;
             public uint Seed;
+
+            /// <summary>Scripted cease-fire (<see cref="LevelHold"/>): weapons charge but take no target.</summary>
+            public bool CeaseFire;
 
             [ReadOnly] public NativeArray<Entity> Entities;
             [ReadOnly] public NativeArray<Team> Teams;
@@ -92,7 +97,7 @@ namespace Space.Core.Combat
                     var charge = WeaponMath.ChargeRate(weapon.Powered);
                     weapon.CooldownLeft = math.max(0f, weapon.CooldownLeft - DeltaTime * charge);
 
-                    var target = WeaponMath.CanEngage(weapon.Control, weapon.Ammo, weapon.Powered)
+                    var target = !CeaseFire && WeaponMath.CanEngage(weapon.Control, weapon.Ammo, weapon.Powered)
                         ? ChooseTarget(position.Value, team.Value, attack.Value, weapon)
                         : -1;
                     weapon.CurrentTarget = target >= 0 ? Entities[target] : Entity.Null;

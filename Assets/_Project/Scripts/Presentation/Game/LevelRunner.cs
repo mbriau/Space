@@ -25,6 +25,9 @@ namespace Space.Presentation.Game
     {
         public LevelDefinition FirstLevel;
 
+        [Tooltip("Scripted opening of a level (camera, lines, arrivals); found on this object when empty.")]
+        public LevelIntro Intro;
+
         [Tooltip("Seed of the first run; each run and level derives its own from it.")]
         public uint BaseSeed = 20261126;
 
@@ -80,6 +83,8 @@ namespace Space.Presentation.Game
             if (_menus == null)
                 _menus = gameObject.AddComponent<EquipmentMenus>();
             _menus.Runner = this;
+            if (Intro == null)
+                Intro = GetComponent<LevelIntro>();
 
             // Tactical presentation: turrets on the decks, dust drifting past the camera.
             if (FindAnyObjectByType<TurretPresenter>() == null)
@@ -248,13 +253,39 @@ namespace Space.Presentation.Game
                 });
             }
 
+            // A level with an intro starts held (no enemy, no shot, timer stopped) until the intro lets go.
+            var intro = Intro != null && Intro.Plays(level);
+            em.SetComponentData(levelEntity, new LevelHold { Clock = intro, CeaseFire = intro });
+
             _shownStatus = LevelStatus.Running;
             SetPaused(false);
+            if (intro)
+                Intro.Play(this);
+        }
+
+        /// <summary>Holds or releases the level clock and the weapons (used by the intro).</summary>
+        public void SetHold(bool clock, bool ceaseFire)
+        {
+            if (!EnsureWorld() || _levelQuery.IsEmpty)
+                return;
+            _world.EntityManager.SetComponentData(_levelQuery.GetSingletonEntity(), new LevelHold { Clock = clock, CeaseFire = ceaseFire });
+        }
+
+        /// <summary>Number of enemies of the current level already in space.</summary>
+        public int ArrivedEnemies()
+        {
+            if (!EnsureWorld() || _levelQuery.IsEmpty)
+                return 0;
+            var count = 0;
+            foreach (var spawn in _world.EntityManager.GetBuffer<LevelSpawn>(_levelQuery.GetSingletonEntity(), true))
+                if (spawn.Role == SpawnRole.Enemy && spawn.Done)
+                    count++;
+            return count;
         }
 
         static Entity CreateLevelEntity(EntityManager em)
         {
-            var entity = em.CreateEntity(typeof(LevelState));
+            var entity = em.CreateEntity(typeof(LevelState), typeof(LevelHold));
             em.AddBuffer<LevelSpawn>(entity);
             em.SetName(entity, "Level");
             return entity;
@@ -271,6 +302,8 @@ namespace Space.Presentation.Game
         void OnGUI()
         {
             if (!_started || _current == null || _world == null || !_world.IsCreated || _levelQuery.IsEmpty)
+                return;
+            if (UiFocus.Cinematic)
                 return;
 
             _title ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperCenter };

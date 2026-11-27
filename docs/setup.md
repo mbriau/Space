@@ -121,6 +121,23 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
 - Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
   Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
 
+## Intro de « Premier contact »
+
+- `LevelIntro` (sur le `LevelRunner` de `Level.unity`, installé par le menu **Space > Intro de Premier contact**) :
+  la caméra arrive derrière le Remorqueur et se pose au-dessus ; Kaïa raconte l'histoire des cuirassés ; un
+  silence ; elle détecte « un vaisseau… non, deux » : la caméra regarde à droite puis à gauche et deux raiders
+  sortent d'hyperespace à bâbord, à une seconde d'intervalle ; elle les appelle, Silas répond ; puis le combat.
+  Échap passe l'intro.
+- Pendant l'intro, la simulation est tenue par `LevelHold` (sur l'entité du niveau) : `Clock` gèle l'horloge du
+  niveau (ni arrivée d'ennemi ni minuteur ; nos vaisseaux apparaissent quand même) et `CeaseFire` empêche tout tir.
+  Les délais des ennemis comptent depuis la détection.
+- Les portraits parlent dans des cadres d'un quart de la largeur de l'écran, en haut à gauche (Kaïa) et à droite
+  (Silas) : `CommsChannel` filme chaque prefab `Portrait_*` (créé par `PortraitBuilder`) dans une texture, loin
+  sous la bataille. Le cadre gris descend, puis l'image apparaît ; liseré de couleur pendant que le personnage
+  parle ; sous-titres phrase par phrase. HUD et contrôles coupés (`UiFocus.Cinematic`).
+- Plans et rythmes : `IntroMath` (testé). Répliques : `Audio/Voix/Pilote` (histoire, détection, appel) et
+  `Audio/Voix/Pirate`, chacune avec son texte (`.txt`, sous-titre) et sa piste Rhubarb.
+
 ## Fond spatial
 
 - `SpaceBackdrop` (sur la caméra du niveau) dessine derrière tout la nébuleuse et deux couches d'étoiles des
