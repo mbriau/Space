@@ -146,7 +146,7 @@ Material:
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
-    - _CockpitMultiplier: 1
+    - _CockpitMultiplier: 1.69
     - _Cull: 2
     - _Cutoff: 0.5
     - _Darken: 0.2
@@ -188,9 +188,9 @@ Material:
     - _Cockpit2: {r: 0.12156857, g: 0.572549, b: 0.854902, a: 0}
     - _Cockpit3: {r: 0.50980395, g: 0.9529411, b: 0.9529411, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _Color1: {r: 0.27058825, g: 0.27058825, b: 0.27058825, a: 0}
-    - _Color2: {r: 0.15294117, g: 0.15294117, b: 0.15294117, a: 0}
-    - _Color3: {r: 0.5372549, g: 0.5372549, b: 0.5372549, a: 0}
+    - _Color1: {r: 0, g: 0, b: 0, a: 0}
+    - _Color2: {r: 1, g: 0, b: 0, a: 0}
+    - _Color3: {r: 1, g: 0.53584486, b: 0.058490515, a: 0}
     - _Emission1: {r: 0, g: 0.06274508, b: 0.24705875, a: 0}
     - _Emission2: {r: 0.12156857, g: 0.572549, b: 0.854902, a: 0}
     - _Emission3: {r: 0.50980395, g: 0.9529411, b: 0.9529411, a: 0}
