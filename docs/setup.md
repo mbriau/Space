@@ -121,6 +121,15 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
 - Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
   Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
 
+## Fond spatial
+
+- `SpaceBackdrop` (sur la caméra du niveau) dessine derrière tout la nébuleuse et deux couches d'étoiles des
+  textures DinV (`Assets/DinV/Dynamic Space Background/Sprites`). Chaque couche glisse à l'opposé du
+  déplacement de la caméra dans la simulation (grandes étoiles plus vite que les petites, nébuleuse presque
+  fixe : parallaxe), dérive doucement et tourne avec la caméra comme un ciel lointain (`BackdropMath`, testé).
+- Menu **Space > Install Space Backdrop** : importe les textures en Repeat et remplace `SpaceDust` par le fond
+  dans `Level.unity`. `LevelRunner` n'ajoute plus la poussière quand la caméra a un fond.
+
 ## Portraits animés (prototype)
 
 - Menus **Space > Portraits** : découpent les patchs de bouche et d'yeux de chaque personnage (`PortraitBuilder`)

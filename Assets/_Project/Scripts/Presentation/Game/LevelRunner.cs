@@ -86,7 +86,8 @@ namespace Space.Presentation.Game
                 gameObject.AddComponent<TurretPresenter>();
             var rig = FindAnyObjectByType<ShipCameraRig>();
             var cameraObject = rig != null ? rig.gameObject : Camera.main != null ? Camera.main.gameObject : null;
-            if (cameraObject != null && cameraObject.GetComponent<SpaceDust>() == null)
+            // Dust only for scenes without a space backdrop (the backdrop's star fields show the speed).
+            if (cameraObject != null && cameraObject.GetComponent<SpaceDust>() == null && cameraObject.GetComponent<SpaceBackdrop>() == null)
                 cameraObject.AddComponent<SpaceDust>();
         }
 
