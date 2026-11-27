@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: af02f4c9657b3244d8afdbb272e74d19
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196802
+  packageName: Ultimate Spaceships Creator
+  packageVersion: 7.1
+  assetPath: Assets/UltimateSpaceshipsCreator/Prefabs/Modules/StarSparrow/StarSparrow_Core.prefab
+  uploadId: 1037126
