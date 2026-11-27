@@ -136,7 +136,7 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
   la caméra arrive derrière le Remorqueur et se pose au-dessus ; Kaïa raconte l'histoire des cuirassés ; un
   silence ; elle détecte « un vaisseau… non, deux » : la caméra regarde à droite puis à gauche et deux raiders
   sortent d'hyperespace à bâbord, à une seconde d'intervalle ; elle les appelle, Silas répond ; puis le combat.
-  Échap passe l'intro.
+  Le bouton **Passer** (en bas à droite) ou Échap passe l'intro.
 - Pendant l'intro, la simulation est tenue par `LevelHold` (sur l'entité du niveau) : `Clock` gèle l'horloge du
   niveau (ni arrivée d'ennemi ni minuteur ; nos vaisseaux apparaissent quand même) et `CeaseFire` empêche tout tir.
   Les délais des ennemis comptent depuis la détection.
