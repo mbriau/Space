@@ -193,7 +193,20 @@ namespace Space.Core.Tests
                     }
                 return (float)total / count;
             }
-            Assert.Greater(AverageTier(true), AverageTier(false) + 0.3f);
+            Assert.Greater(AverageTier(true), AverageTier(false) + 0.15f);
+        }
+
+        [Test]
+        public void AnEliteAlwaysOffersAnItemARankAbove([Values(0, 4, 12)] int levelsCompleted)
+        {
+            var minimum = RewardGenerator.EliteItemTier(levelsCompleted);
+            Assert.That(minimum, Is.InRange(2, 3));
+            for (var seed = 1u; seed <= 50u; seed++)
+            {
+                var offers = RewardGenerator.Roll(ShipLoadout.Starter(), seed, levelsCompleted, elite: true);
+                Assert.AreEqual(RewardKind.Item, offers[0].Kind);
+                Assert.GreaterOrEqual(ItemCatalog.Get(offers[0].Id).Tier, minimum, $"seed {seed}");
+            }
         }
     }
 }

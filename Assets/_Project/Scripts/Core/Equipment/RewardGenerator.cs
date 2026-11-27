@@ -22,7 +22,8 @@ namespace Space.Core.Equipment
     /// Rolls the offers after a won level (pick one, or skip for a few credits): the first is an
     /// item, the second an upgrade that fits something the player owns, the third either. Items
     /// the player already owns are never offered, and two items never share a category. Weighted
-    /// towards the rarity that suits the progress of the run, like the shop. Deterministic for a seed.
+    /// towards the rarity that suits the progress of the run, like the shop; after an elite, rarer
+    /// still, and the item is at least a rank above (<see cref="EliteItemTier"/>). Deterministic for a seed.
     /// </summary>
     public static class RewardGenerator
     {
@@ -34,13 +35,21 @@ namespace Space.Core.Equipment
         /// <summary>An elite fight's offers are drawn as if the run were this many levels further: rarer things.</summary>
         public const int EliteProgressBonus = 4;
 
+        /// <summary>Rarity the item of an elite's offers has at least: one above what suits the run, when there is one.</summary>
+        public static int EliteItemTier(int levelsCompleted) =>
+            math.min(3, (int)math.floor(ShopGenerator.TargetTier(levelsCompleted)) + 1);
+
         public static List<RewardOffer> Roll(ShipLoadout loadout, uint seed, int levelsCompleted, bool elite = false,
             int count = OfferCount) =>
-            Roll(ItemCatalog.All, UpgradeCatalog.All, loadout, seed, levelsCompleted + (elite ? EliteProgressBonus : 0), count);
+            Roll(ItemCatalog.All, UpgradeCatalog.All, loadout, seed, levelsCompleted, count, elite);
 
         public static List<RewardOffer> Roll(IReadOnlyList<ItemDefinition> items, IReadOnlyList<UpgradeDefinition> upgrades,
-            ShipLoadout loadout, uint seed, int levelsCompleted, int count = OfferCount)
+            ShipLoadout loadout, uint seed, int levelsCompleted, int count = OfferCount, bool elite = false)
         {
+            var minItemTier = elite ? EliteItemTier(levelsCompleted) : 0;
+            if (elite)
+                levelsCompleted += EliteProgressBonus;
+
             var random = new Unity.Mathematics.Random(seed == 0 ? 1u : seed);
 
             var itemPool = new List<ItemDefinition>();
@@ -69,6 +78,13 @@ namespace Space.Core.Equipment
                     // A category not offered yet, if any is left.
                     var fresh = itemPool.FindAll(item => !categories.Contains(item.Category));
                     var choices = fresh.Count > 0 ? fresh : itemPool;
+                    if (i == 0 && minItemTier > 0)
+                    {
+                        // An elite's first item is a rank above what suits the run.
+                        var rare = choices.FindAll(item => item.Tier >= minItemTier);
+                        if (rare.Count > 0)
+                            choices = rare;
+                    }
                     if (choices.Count == 0)
                         break;
                     var pick = choices[Draw(ref random, choices, item => item.Tier, levelsCompleted)];
