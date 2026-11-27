@@ -4,8 +4,8 @@ namespace Space.Presentation.Rendering
 {
     /// <summary>
     /// How the layers of the space backdrop scroll. Each layer is a texture tiled over the view; it
-    /// slides opposite to the camera's travel (near layers faster: parallax) and turns with the camera
-    /// like a distant sky. Pure functions, unit tested.
+    /// slides opposite to the camera's travel (near layers faster: parallax), turns with the camera
+    /// like a distant sky and rolls against the camera's roll. Pure functions, unit tested.
     /// </summary>
     public static class BackdropMath
     {
@@ -31,6 +31,21 @@ namespace Space.Presentation.Rendering
             var y = verticalFov > 0f ? -pitchDegrees / verticalFov * tilesInView.y : 0f;
             return new Vector2(x, y);
         }
+
+        /// <summary>
+        /// A screen-space scroll expressed along a layer turned by <paramref name="layerRollDegrees"/>
+        /// on screen (the layers turn against the camera's roll to stay level with the world).
+        /// </summary>
+        public static Vector2 ToLayer(Vector2 screen, float layerRollDegrees)
+        {
+            var a = layerRollDegrees * Mathf.Deg2Rad;
+            var c = Mathf.Cos(a);
+            var s = Mathf.Sin(a);
+            return new Vector2(screen.x * c + screen.y * s, -screen.x * s + screen.y * c);
+        }
+
+        /// <summary>Side of a square layer that still covers a view of this size whatever its roll.</summary>
+        public static float RollCover(float width, float height) => Mathf.Sqrt(width * width + height * height);
 
         /// <summary>Keeps an offset in [0, 1) so it never loses float precision over a long flight.</summary>
         public static Vector2 Wrap(Vector2 offset) => new(offset.x - Mathf.Floor(offset.x), offset.y - Mathf.Floor(offset.y));

@@ -76,12 +76,13 @@ namespace Space.Presentation.Controls
 
         void LateUpdate()
         {
-            _visible = _controls.TryGetMainShipPosition(out var center);
+            _visible = _controls.TryGetMainShipFrame(out var center, out var rotation, out _);
             _root.gameObject.SetActive(_visible);
             if (!_visible)
                 return;
 
-            _root.position = center;
+            // On the game plane, tilted with the course; turned with the ship's heading only.
+            _root.SetPositionAndRotation(center, rotation);
 
             // The far side of a ring is about (camera distance + radius) away: size the line for an
             // average of near and far sides so big rings do not break into dashes at a grazing angle.
@@ -99,7 +100,7 @@ namespace Space.Presentation.Controls
             GUI.color = new Color(Color.r, Color.g, Color.b, 0.9f);
 
             // Label each ring where it crosses the camera's right-hand side on the plane.
-            var right = Vector3.ProjectOnPlane(_camera.transform.right, Vector3.up).normalized;
+            var right = Vector3.ProjectOnPlane(_camera.transform.right, _root.up).normalized;
             for (var i = 0; i < Radii.Length; i++)
             {
                 var screen = _camera.WorldToScreenPoint(_root.position + right * Radii[i]);

@@ -298,7 +298,6 @@ namespace Space.Presentation.Rendering
         static ShipTurrets BuildArt(ShipArt art, string name, DynamicBuffer<Weapon> weapons)
         {
             var set = new ShipTurrets { Root = new GameObject($"Ship {name}") };
-            set.Root.hideFlags = HideFlags.DontSave;
             var artModel = ShipArtModel.Create(art, set.Root.transform);
             var count = weapons.IsCreated ? weapons.Length : 0;
             for (var i = 0; i < count && i < artModel.Turrets.Count; i++)
@@ -318,7 +317,6 @@ namespace Space.Presentation.Rendering
         static ShipTurrets BuildModel(in ShipDesign design, DynamicBuffer<Weapon> weapons)
         {
             var set = new ShipTurrets { Root = new GameObject($"Ship {design.DisplayName}") };
-            set.Root.hideFlags = HideFlags.DontSave;
             var count = weapons.IsCreated ? weapons.Length : 0;
 
             // Finished art when the design has some (textured hull, heads cut out of the model).
@@ -343,7 +341,6 @@ namespace Space.Presentation.Rendering
         ShipTurrets Build(DynamicBuffer<Weapon> weapons, float radius, byte team)
         {
             var set = new ShipTurrets { Root = new GameObject("Turrets") };
-            set.Root.hideFlags = HideFlags.DontSave;
             var size = radius * SizeShare;
             var deck = radius * 0.2f;
             var count = weapons.Length;

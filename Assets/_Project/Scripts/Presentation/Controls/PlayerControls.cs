@@ -86,7 +86,7 @@ namespace Space.Presentation.Controls
                 _selected = em.CreateEntityQuery(ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<LocalToWorld>());
                 _flagships = em.CreateEntityQuery(ComponentType.ReadOnly<PlayerFlagship>(), ComponentType.ReadOnly<LocalToWorld>());
                 _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
-                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<RenderSpace>());
                 _mainShip = Entity.Null;
             }
             return true;
@@ -233,7 +233,7 @@ namespace Space.Presentation.Controls
                 if (commands.Length > 0 && commands[0].Type == ShipCommandType.MoveTo)
                 {
                     info.HasDestination = true;
-                    info.DestinationRenderPosition = (float3)(commands[0].Point - GetOrigin());
+                    info.DestinationRenderPosition = GetRenderSpace().ToRender(commands[0].Point);
                 }
             }
             return true;
@@ -318,9 +318,9 @@ namespace Space.Presentation.Controls
             return em.HasComponent<ShipName>(entity) ? em.GetComponentData<ShipName>(entity).Value.ToString() : "?";
         }
 
-        double3 GetOrigin()
+        RenderSpace GetRenderSpace()
         {
-            return _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
+            return _origin.IsEmpty ? RenderSpace.Flat(double3.zero) : _origin.GetSingleton<RenderSpace>();
         }
 
         /// <summary>
@@ -582,17 +582,16 @@ namespace Space.Presentation.Controls
             if (!em.HasBuffer<ShipCommand>(ship))
                 return;
 
-            // Destination on the game plane through the ship.
-            var shipPosition = (Vector3)em.GetComponentData<LocalToWorld>(ship).Position;
+            // Destination on the game plane through the ship (tilted with the course), then back
+            // onto the straight lane of the simulation.
+            var shipTransform = em.GetComponentData<LocalToWorld>(ship);
+            var plane = new Plane((Vector3)shipTransform.Up, (Vector3)shipTransform.Position);
             var ray = _camera.ScreenPointToRay(pointer);
-            if (Mathf.Abs(ray.direction.y) < 1e-4f)
-                return;
-            var distance = (shipPosition.y - ray.origin.y) / ray.direction.y;
-            if (distance <= 0f)
+            if (!plane.Raycast(ray, out var distance))
                 return; // clicked above the horizon
 
             var renderPoint = ray.origin + ray.direction * distance;
-            var simPoint = (double3)(float3)renderPoint + GetOrigin();
+            var simPoint = GetRenderSpace().ToSim(renderPoint, em.GetComponentData<SimPosition>(ship).Value);
             var tick = _time.IsEmpty ? 0u : _time.GetSingleton<SimulationTime>().Tick;
 
             var commands = em.GetBuffer<ShipCommand>(ship);

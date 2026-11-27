@@ -65,7 +65,7 @@ namespace Space.Presentation.Rendering
                 _world = world;
                 var em = world.EntityManager;
                 _queue = em.CreateEntityQuery(ComponentType.ReadOnly<ShotEventQueue>());
-                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<RenderSpace>());
                 _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
             }
 
@@ -78,16 +78,16 @@ namespace Space.Presentation.Rendering
             if (_queue.IsEmpty)
                 return;
 
-            var origin = _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
+            var space = _origin.IsEmpty ? RenderSpace.Flat(double3.zero) : _origin.GetSingleton<RenderSpace>();
             var impacts = _world.EntityManager.GetBuffer<ImpactEvent>(_queue.GetSingletonEntity());
             foreach (var impact in impacts)
             {
-                var position = (Vector3)(float3)(impact.Position - origin);
+                var position = (Vector3)space.ToRender(impact.Position);
                 var onHull = impact.HullDamage > impact.ShieldDamage * 0.5f || !impact.ShieldWasUp;
                 var damage = impact.HullDamage + impact.ShieldDamage;
                 var radius = impact.TargetRadius * 0.6f + damage * 0.25f;
                 if (impact.ShieldWasUp && impact.ShieldDamage > 0f)
-                    PlayShieldArc(impact, origin, damage);
+                    PlayShieldArc(impact, space, damage);
                 else
                     Play(position, radius, onHull ? HullColor : ShieldColor);
 
@@ -121,16 +121,16 @@ namespace Space.Presentation.Rendering
         /// A shot strikes a shield: an electric splash on the shield's surface, on the side the shot
         /// came from, following the ship.
         /// </summary>
-        void PlayShieldArc(in ImpactEvent impact, double3 origin, float damage)
+        void PlayShieldArc(in ImpactEvent impact, in RenderSpace space, float damage)
         {
-            var from = (Vector3)(float3)(impact.From - origin);
+            var from = (Vector3)space.ToRender(impact.From);
             var presenter = TurretPresenter.Instance;
             Vector3 point, normal;
             float radius;
             Transform anchor;
             if (presenter == null || !presenter.TryGetShieldHit(impact.Target, from, out point, out normal, out radius, out anchor))
             {
-                var center = (Vector3)(float3)(impact.Position - origin);
+                var center = (Vector3)space.ToRender(impact.Position);
                 normal = (from - center).normalized;
                 radius = impact.TargetRadius;
                 point = center + normal * radius;

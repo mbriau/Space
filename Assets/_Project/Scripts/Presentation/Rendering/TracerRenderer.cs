@@ -85,7 +85,7 @@ namespace Space.Presentation.Rendering
                 _world = world;
                 var em = world.EntityManager;
                 _shots = em.CreateEntityQuery(ComponentType.ReadOnly<ShotEventQueue>());
-                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                _origin = em.CreateEntityQuery(ComponentType.ReadOnly<RenderSpace>());
                 _time = em.CreateEntityQuery(ComponentType.ReadOnly<SimulationTime>());
             }
             return true;
@@ -104,7 +104,7 @@ namespace Space.Presentation.Rendering
             if (_shots.IsEmpty)
                 return;
 
-            var origin = _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
+            var space = _origin.IsEmpty ? RenderSpace.Flat(double3.zero) : _origin.GetSingleton<RenderSpace>();
             var buffer = _world.EntityManager.GetBuffer<ShotEvent>(_shots.GetSingletonEntity());
             foreach (var shot in buffer)
             {
@@ -125,7 +125,7 @@ namespace Space.Presentation.Rendering
                     color.a *= MissAlpha;
 
                 // Projectiles leave from the turret's muzzle, which recoils.
-                var from = (Vector3)(float3)(shot.From - origin);
+                var from = (Vector3)space.ToRender(shot.From);
                 var turrets = TurretPresenter.Instance;
                 if (turrets != null)
                 {
@@ -138,7 +138,7 @@ namespace Space.Presentation.Rendering
                 {
                     Line = line,
                     From = from,
-                    To = (Vector3)(float3)(shot.To - origin),
+                    To = (Vector3)space.ToRender(shot.To),
                     Flight = Mathf.Max(0.05f, shot.FlightSeconds),
                     Length = length,
                     WidthFactor = widthFactor,

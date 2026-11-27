@@ -89,10 +89,10 @@ namespace Space.Presentation.Rendering
                 if (world != _world)
                 {
                     _world = world;
-                    _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                    _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderSpace>());
                 }
                 if (!_origin.IsEmpty)
-                    origin = _origin.GetSingleton<FloatingOrigin>().Origin;
+                    origin = _origin.GetSingleton<RenderSpace>().RenderOrigin;
             }
             return origin + (double3)(float3)transform.position;
         }
@@ -111,10 +111,13 @@ namespace Space.Presentation.Rendering
             _lastEuler = euler;
             _hasLast = true;
 
-            // The quads fill the view at the backdrop's distance, a little larger to hide the edges.
+            // The quads fill the view at the backdrop's distance, a little larger to hide the edges, and
+            // square enough to keep covering it while they roll against the camera (level with the world).
             var distance = _camera.farClipPlane * Depth;
             var height = 2f * distance * Mathf.Tan(_camera.fieldOfView * 0.5f * Mathf.Deg2Rad) * 1.05f;
             var width = height * _camera.aspect;
+            var side = BackdropMath.RollCover(width, height);
+            var roll = -euler.z;
             var horizontalFov = BackdropMath.HorizontalFov(_camera.fieldOfView, _camera.aspect);
             var right = transform.right;
             var up = transform.up;
@@ -124,16 +127,17 @@ namespace Space.Presentation.Rendering
                 if (layer.Quad == null)
                     continue;
                 layer.Quad.localPosition = new Vector3(0f, 0f, distance);
-                layer.Quad.localRotation = Quaternion.identity;
-                layer.Quad.localScale = new Vector3(width, height, 1f);
+                layer.Quad.localRotation = Quaternion.Euler(0f, 0f, roll);
+                layer.Quad.localScale = new Vector3(side, side, 1f);
 
-                // Square texels: the tiling follows the screen's aspect.
+                // Square texels, as many tiles across the view as before.
                 var tiles = new Vector2(layer.Tiling * _camera.aspect, layer.Tiling);
-                layer.Offset += BackdropMath.TravelScroll(travel, right, up, layer.MetresPerTile)
-                                + BackdropMath.TurnScroll(yaw, pitch, horizontalFov, _camera.fieldOfView, tiles)
-                                + layer.Drift * Time.deltaTime;
+                var quadTiles = layer.Tiling * side / height;
+                var screenScroll = BackdropMath.TravelScroll(travel, right, up, layer.MetresPerTile)
+                                   + BackdropMath.TurnScroll(yaw, pitch, horizontalFov, _camera.fieldOfView, tiles);
+                layer.Offset += BackdropMath.ToLayer(screenScroll, roll) + layer.Drift * Time.deltaTime;
                 layer.Offset = BackdropMath.Wrap(layer.Offset);
-                layer.Material.SetVector("_MainTex_ST", new Vector4(tiles.x, tiles.y, layer.Offset.x, layer.Offset.y));
+                layer.Material.SetVector("_MainTex_ST", new Vector4(quadTiles, quadTiles, layer.Offset.x, layer.Offset.y));
             }
         }
 
