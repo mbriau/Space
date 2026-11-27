@@ -40,7 +40,8 @@ Assets/_Project/
 - Sur la caméra de la scène : `PlayerControls` (sélection, ordres), `ShipCameraRig` (caméra 3e personne),
   `RangeRings` (cercles de distance) et `DebugHud` (HUD provisoire en IMGUI, à remplacer par UI Toolkit).
 - Les positions de simulation sont en `double3` (`SimPosition`). `SimToRenderTransformSystem` interpole
-  entre les deux derniers ticks et écrit `LocalTransform` relatif à `FloatingOrigin`.
+  entre les deux derniers ticks et écrit `LocalTransform` relatif à `FloatingOrigin`, à travers
+  `RenderSpace` (voir « Trajectoire courbe » plus bas).
 - Mettre `FloatingOriginAnchor` sur le vaisseau suivi par la caméra.
 
 ## Vaisseaux temporaires
@@ -163,6 +164,27 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
   fixe : parallaxe), dérive doucement et tourne avec la caméra comme un ciel lointain (`BackdropMath`, testé).
 - Menu **Space > Install Space Backdrop** : importe les textures en Repeat et remplace `SpaceDust` par le fond
   dans `Level.unity`. `LevelRunner` n'ajoute plus la poussière quand la caméra a un fond.
+
+## Trajectoire courbe et flottement des ennemis (rendu seulement)
+
+- La simulation garde sa voie droite et plate (gameplay, portées et tests inchangés). Au rendu, la voie du
+  vaisseau amiral est **pliée sur une spline** douce (Catmull-Rom), avec un peu de montée et de roulis :
+  chaque vaisseau garde sa place par rapport à la voie (droite, haut, distance parcourue), donc les ennemis à
+  côté suivent la courbe avec nous.
+- La spline : asset `Assets/_Project/Resources/CoursePath.asset` (`CoursePath`), partagée par tous les niveaux
+  pour l'instant. Menu **Space > Generate Course Path** pour la regénérer à partir de sa graine et de sa forme
+  (`CourseShape` : amplitude et longueur d'onde à gauche/droite et en hauteur, roulis dans les virages, rampe
+  du roulis au départ). Aujourd'hui : écarts de quelques centaines de mètres sur 7 km, virages d'au moins 2 km de rayon, roulis
+  ≤ 12°, départ droit et à plat.
+- `CourseWarpSystem` cuit la spline par longueur d'arc (un repère tous les 4 m), suit la voie du vaisseau
+  amiral et tient à jour le singleton `RenderSpace` : sim → rendu (`ToRender`), rendu → sim pour les clics
+  (`ToSim`). Tout ce qui convertit des positions de simulation passe par lui (vaisseaux, traçantes, impacts,
+  destination, fond, poussière). `CourseWarpSystem.Bend = false` remet la voie droite.
+- Caméra tactique : elle suit 40 % de l'inclinaison de la trajectoire (`ShipCameraRig.CourseFollow`) ; le
+  reste se voit comme les vaisseaux qui s'inclinent. Les cercles de portée s'inclinent avec le plan.
+- Ennemis : `IdleSwaySystem` donne à chacun un `IdleSway` (montée et descente, avance et recul, léger
+  tangage), proportionné à sa taille et différent pour chacun, appliqué seulement au rendu ; jamais de côté,
+  la distance de combat ne change pas. Règles pures dans `CourseMath` (testées).
 
 ## Portraits animés (prototype)
 

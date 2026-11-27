@@ -46,9 +46,9 @@ namespace Space.Presentation.Rendering
             if (world != _world)
             {
                 _world = world;
-                _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderSpace>());
             }
-            return _origin.IsEmpty ? double3.zero : _origin.GetSingleton<FloatingOrigin>().Origin;
+            return _origin.IsEmpty ? double3.zero : _origin.GetSingleton<RenderSpace>().RenderOrigin;
         }
 
         void LateUpdate()

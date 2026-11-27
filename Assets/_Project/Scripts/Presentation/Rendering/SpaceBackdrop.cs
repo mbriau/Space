@@ -89,10 +89,10 @@ namespace Space.Presentation.Rendering
                 if (world != _world)
                 {
                     _world = world;
-                    _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<FloatingOrigin>());
+                    _origin = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderSpace>());
                 }
                 if (!_origin.IsEmpty)
-                    origin = _origin.GetSingleton<FloatingOrigin>().Origin;
+                    origin = _origin.GetSingleton<RenderSpace>().RenderOrigin;
             }
             return origin + (double3)(float3)transform.position;
         }

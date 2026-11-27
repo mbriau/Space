@@ -5,6 +5,8 @@
         "Space.Core",
         "Space.Presentation",
         "Unity.Mathematics",
+        "Unity.Collections",
+        "Unity.Entities",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

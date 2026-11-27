@@ -31,10 +31,15 @@ namespace Space.Presentation.Controls
         /// <param name="zoom">Wheel factor: 1 by default, larger is further.</param>
         public static void Place(Vector3 ship, Quaternion shipRotation, float radius, IReadOnlyList<Vector4> enemies,
             float fieldOfView, float aspect, float zoom, in Settings settings, out Vector3 position, out Quaternion rotation)
+            => Place(ship, shipRotation, radius, enemies, fieldOfView, aspect, zoom, settings, Vector3.up, out position, out rotation);
+
+        /// <param name="up">Up of the game plane as the camera sees it (tilted when the course banks).</param>
+        public static void Place(Vector3 ship, Quaternion shipRotation, float radius, IReadOnlyList<Vector4> enemies,
+            float fieldOfView, float aspect, float zoom, in Settings settings, Vector3 up, out Vector3 position, out Quaternion rotation)
         {
-            var forward = shipRotation * Vector3.forward;
-            forward.y = 0f;
-            forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : Vector3.forward;
+            up = up.sqrMagnitude > 1e-4f ? up.normalized : Vector3.up;
+            var forward = Vector3.ProjectOnPlane(shipRotation * Vector3.forward, up);
+            forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : Vector3.ProjectOnPlane(Vector3.forward, up).normalized;
 
             // Direction of the fight, on the plane: toward the enemies' centre, or ahead if none.
             var toEnemies = forward * radius * 8f;
@@ -44,25 +49,24 @@ namespace Space.Presentation.Controls
                 foreach (var e in enemies)
                     centre += new Vector3(e.x, e.y, e.z);
                 centre /= enemies.Count;
-                toEnemies = centre - ship;
-                toEnemies.y = 0f;
+                toEnemies = Vector3.ProjectOnPlane(centre - ship, up);
                 if (toEnemies.sqrMagnitude < 1f)
                     toEnemies = forward * radius * 8f;
             }
             var direction = toEnemies.normalized;
 
             var anchor = ship - direction * radius * settings.Back * zoom - forward * radius * settings.Astern * zoom
-                         + Vector3.up * radius * settings.Height * zoom;
+                         + up * radius * settings.Height * zoom;
             var lookAt = ship + toEnemies * settings.LookShare;
 
             var halfV = fieldOfView * 0.5f * Mathf.Deg2Rad * settings.Margin;
             var halfH = Mathf.Atan(Mathf.Tan(fieldOfView * 0.5f * Mathf.Deg2Rad) * aspect) * settings.Margin;
             position = anchor;
-            rotation = Quaternion.LookRotation(lookAt - position, Vector3.up);
+            rotation = Quaternion.LookRotation(lookAt - position, up);
             for (var i = 0; i < 24 && !Fits(position, rotation, ship, radius, enemies, halfH, halfV); i++)
             {
-                position += (anchor - lookAt).normalized * radius * 0.6f + Vector3.up * radius * 0.1f;
-                rotation = Quaternion.LookRotation(lookAt - position, Vector3.up);
+                position += (anchor - lookAt).normalized * radius * 0.6f + up * radius * 0.1f;
+                rotation = Quaternion.LookRotation(lookAt - position, up);
             }
         }
 
