@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Space.Core.Equipment;
+using Space.Core.Sectors;
 
 namespace Space.Presentation.Game
 {
@@ -30,6 +31,18 @@ namespace Space.Presentation.Game
         public List<RewardOffer> RewardOffers = new();
         public bool RewardClaimed = true;
 
+        /// <summary>Sectors of phase 1, each a delivery contract.</summary>
+        public const int SectorsInPhase = 3;
+
+        /// <summary>The sector being crossed (0-based) and the way through it.</summary>
+        public int SectorIndex;
+        public SectorRun Sector;
+
+        /// <summary>The exit of the sector has been won: the delivery is made.</summary>
+        public bool SectorDone;
+
+        public bool PhaseComplete => SectorDone && SectorIndex + 1 >= SectorsInPhase;
+
         public void StartNewRun()
         {
             RunIndex++;
@@ -42,6 +55,27 @@ namespace Space.Presentation.Game
             ShopOpen = false;
             RewardOffers.Clear();
             RewardClaimed = true;
+            SectorIndex = 0;
+            Sector = null;
+            SectorDone = false;
+        }
+
+        /// <summary>Opens a new sector map, the ship at its start.</summary>
+        public void StartSector(uint seed, int levelCount)
+        {
+            Sector = new SectorRun(SectorMapGenerator.Generate(seed, levelCount));
+            SectorDone = false;
+            ShopOpen = false;
+        }
+
+        /// <summary>Moves on to the next sector of the phase once the delivery is made.</summary>
+        public bool NextSector(uint seed, int levelCount)
+        {
+            if (!SectorDone || PhaseComplete)
+                return false;
+            SectorIndex++;
+            StartSector(seed, levelCount);
+            return true;
         }
 
         public void RollShop(uint seed)
@@ -59,9 +93,9 @@ namespace Space.Presentation.Game
 
         // ------------------------------------------------------------------ rewards
 
-        public void RollRewards(uint seed)
+        public void RollRewards(uint seed, bool elite = false)
         {
-            RewardOffers = RewardGenerator.Roll(Loadout, seed, LevelsCompleted);
+            RewardOffers = RewardGenerator.Roll(Loadout, seed, LevelsCompleted, elite);
             RewardClaimed = RewardOffers.Count == 0;
         }
 
