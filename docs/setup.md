@@ -121,6 +121,15 @@ des emplacements). Le nom affiché est celui du design. Les noms de classe (Carg
 - Icônes dessinées par code (`ItemIcons`, `IconCanvas`) à partir des caractéristiques de chaque objet.
   Le test `ItemIconTests.WritePreviewSheet` écrit une planche de toutes les icônes dans `artifacts/icons`.
 
+## Réglages du vaisseau d'un niveau à l'autre
+
+- À la victoire, `LevelRunner` retient dans `RunState.ShipSettings` la puissance du bouclier et des moteurs et,
+  pour chaque arme, sa tension, sa surcharge, son contrôle (Arrêt/Auto/Manuel) et son mode de tir
+  (`ShipSettings.Capture`). Le vaisseau du niveau suivant les retrouve dès qu'il est équipé (`ShipSettings.Apply`),
+  dans la limite de son réacteur. Les armes sont reconnues par emplacement et objet : une arme changée entre deux
+  niveaux repart avec les réglages habituels. Une nouvelle partie efface tout.
+- Les niveaux ne donnent plus de drones d'escorte : seuls ceux de l'équipement (achetés ou gagnés) suivent le vaisseau.
+
 ## Intro de « Premier contact »
 
 - `LevelIntro` (sur le `LevelRunner` de `Level.unity`, installé par le menu **Space > Intro de Premier contact**) :

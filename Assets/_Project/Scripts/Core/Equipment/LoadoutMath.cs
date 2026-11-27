@@ -17,6 +17,12 @@ namespace Space.Core.Equipment
         public float TurnRateDegrees;
         public float SpeedFactor;
         public List<WeaponStats> Weapons;
+
+        /// <summary>
+        /// For each entry of <see cref="Weapons"/>: its slot and item ("slot:id"), so the settings of a
+        /// weapon follow it from one level to the next (<see cref="ShipSettings"/>).
+        /// </summary>
+        public List<string> WeaponKeys;
         public List<ItemDefinition> Drones;
 
         /// <summary>Units all the weapons draw when powered (without supercharge).</summary>
@@ -76,12 +82,15 @@ namespace Space.Core.Equipment
                 stats.TurnRateDegrees = engine.TurnRateDegrees * stats.SpeedFactor;
             }
 
-            foreach (var id in loadout.Weapons)
+            stats.WeaponKeys = new List<string>();
+            for (var slot = 0; slot < loadout.Weapons.Length; slot++)
             {
+                var id = loadout.Weapons[slot];
                 var item = loadout.Resolve(id);
                 if (item == null || !ItemCategories.IsWeapon(item.Category))
                     continue;
                 stats.Weapons.Add(item.Weapon);
+                stats.WeaponKeys.Add($"{slot}:{id}");
                 stats.WeaponsDemand += item.Weapon.PowerDraw;
             }
 

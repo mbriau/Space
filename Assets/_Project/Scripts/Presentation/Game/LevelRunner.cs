@@ -159,6 +159,7 @@ namespace Space.Presentation.Game
 
             if (status == LevelStatus.Won)
             {
+                CaptureShipSettings();
                 var beacon = _run.Sector.CurrentBeacon;
                 _run.Credits += _current.RewardCredits;
                 _run.LevelsCompleted++;
@@ -188,10 +189,18 @@ namespace Space.Presentation.Game
             if (!_unfittedFlagships.IsEmpty)
             {
                 var stats = LoadoutMath.Compute(_run.Loadout);
+                _fittedWeaponKeys = stats.WeaponKeys;
                 using var flagships = _unfittedFlagships.ToEntityArray(Allocator.Temp);
                 foreach (var ship in flagships)
                 {
                     LoadoutApplier.ApplyToFlagship(em, ship, stats);
+                    // The power and weapon controls the player left at the end of the last level.
+                    if (_run.ShipSettings != null)
+                    {
+                        var grid = em.GetComponentData<PowerGrid>(ship);
+                        _run.ShipSettings.Apply(ref grid, em.GetBuffer<Weapon>(ship).AsNativeArray(), stats.WeaponKeys);
+                        em.SetComponentData(ship, grid);
+                    }
                     em.AddComponent<EquipmentFitted>(ship);
                 }
             }
@@ -208,6 +217,21 @@ namespace Space.Presentation.Game
                     em.AddComponent<EquipmentFitted>(escort);
                 }
             }
+        }
+
+        /// <summary>Weapon keys (slot and item) of the flagship as fitted, in the order of its weapons.</summary>
+        List<string> _fittedWeaponKeys;
+
+        /// <summary>Remembers how the player set up the flagship, to give it back in the next level.</summary>
+        void CaptureShipSettings()
+        {
+            if (_fittedWeaponKeys == null || !TryGetFlagship(out var ship))
+                return;
+            var em = _world.EntityManager;
+            if (!em.HasComponent<PowerGrid>(ship) || !em.HasBuffer<Weapon>(ship))
+                return;
+            _run.ShipSettings = ShipSettings.Capture(em.GetComponentData<PowerGrid>(ship),
+                em.GetBuffer<Weapon>(ship, true).AsNativeArray(), _fittedWeaponKeys);
         }
 
         /// <summary>A new run: the first sector's map, its start being the first level (with its intro).</summary>

@@ -17,21 +17,20 @@ MonoBehaviour:
   Environment: Station spatiale
   SurviveSeconds: 60
   WinWhenEnemiesDestroyed: 1
+  CruiseSpeed: 15
   Flagship: Cargo
-  Escorts:
-  - Ship: Drone
-    Offset: {x: -35, y: 0, z: -15}
-  - Ship: Drone
-    Offset: {x: 35, y: 0, z: -15}
+  Escorts: []
   Enemies:
   - Ship: PirateFighter
     DelaySeconds: 4
     Distance: 900
     AngleDegrees: -40
+    Along: 0
   - Ship: PirateFighter
     DelaySeconds: 20
     Distance: 1000
     AngleDegrees: 60
+    Along: 0
   RewardCredits: 150
   NextLevels:
   - {fileID: 11400000, guid: e70ea8c0e951a2f47be88f9fd78fef4a, type: 2}
