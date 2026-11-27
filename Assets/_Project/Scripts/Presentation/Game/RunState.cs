@@ -17,6 +17,9 @@ namespace Space.Presentation.Game
         /// <summary>The player's ship equipment and hold.</summary>
         public ShipLoadout Loadout = ShipLoadout.Starter();
 
+        /// <summary>How the ship was set up at the end of the last won level (power, weapon controls); null at the start.</summary>
+        public ShipSettings ShipSettings;
+
         /// <summary>Offers of the shop (ids), and those already bought.</summary>
         public List<string> ShopOffers = new();
         public HashSet<string> ShopSold = new();
@@ -49,6 +52,7 @@ namespace Space.Presentation.Game
             Credits = 0;
             LevelsCompleted = 0;
             Loadout = ShipLoadout.Starter();
+            ShipSettings = null;
             ShopOffers.Clear();
             ShopSold.Clear();
             BetweenLevels = false;
