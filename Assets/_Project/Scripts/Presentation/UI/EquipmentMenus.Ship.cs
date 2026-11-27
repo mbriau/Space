@@ -40,11 +40,11 @@ namespace Space.Presentation.UI
             for (var i = 0; i < loadout.Hold.Count; i++)
             {
                 var id = loadout.Hold[i];
-                var item = ItemCatalog.Get(id);
+                var item = loadout.Resolve(id);
                 if (item == null)
                     continue;
                 var selected = _holdSelection == id;
-                var content = new GUIContent($"{item.Name}\n{ItemText.Category(item.Category)} · {ItemText.Summary(item)}", ItemIcons.Get(item));
+                var content = new GUIContent($"{item.Name}{ItemText.UpgradeTag(loadout, id)}\n{ItemText.Category(item.Category)} · {ItemText.Summary(item)}", ItemIcons.Get(item));
                 if (GUILayout.Button(content, selected ? MenuStyles.SlotSelected : MenuStyles.Slot, GUILayout.Height(52)))
                     _holdSelection = id;
             }
@@ -55,7 +55,7 @@ namespace Space.Presentation.UI
             GUILayout.BeginVertical(MenuStyles.Panel);
             _detailsScroll = GUILayout.BeginScrollView(_detailsScroll);
             if (_holdSelection != null && loadout.Hold.Contains(_holdSelection))
-                DrawHoldDetails(loadout, ItemCatalog.Get(_holdSelection), canEdit);
+                DrawHoldDetails(loadout, loadout.Resolve(_holdSelection), canEdit);
             else
                 DrawSlotDetails(loadout, canEdit);
             GUILayout.EndScrollView();
@@ -152,10 +152,11 @@ namespace Space.Presentation.UI
 
         void DrawSlot(ShipLoadout loadout, SlotKind kind, int index)
         {
-            var item = ItemCatalog.Get(loadout.Get(kind, index));
+            var id = loadout.Get(kind, index);
+            var item = loadout.Resolve(id);
             var selected = _holdSelection == null && _slotKind == kind && _slotIndex == index;
             var label = item != null
-                ? $"{ItemText.Slot(kind, index)} : {item.Name}\n{ItemText.Summary(item)}"
+                ? $"{ItemText.Slot(kind, index)} : {item.Name}{ItemText.UpgradeTag(loadout, id)}\n{ItemText.Summary(item)}"
                 : $"{ItemText.Slot(kind, index)} : vide";
             var icon = item != null ? ItemIcons.Get(item) : null;
             if (GUILayout.Button(new GUIContent(label, icon), selected ? MenuStyles.SlotSelected : MenuStyles.Slot, GUILayout.Height(52)))
@@ -168,17 +169,18 @@ namespace Space.Presentation.UI
 
         void DrawSlotDetails(ShipLoadout loadout, bool canEdit)
         {
-            var item = ItemCatalog.Get(loadout.Get(_slotKind, _slotIndex));
+            var item = loadout.Resolve(loadout.Get(_slotKind, _slotIndex));
             GUILayout.Label(ItemText.Slot(_slotKind, _slotIndex), MenuStyles.Muted);
             if (item == null)
             {
                 GUILayout.Label(_slotKind == SlotKind.Drone
-                    ? "Emplacement libre : un drone acheté au magasin viendra s'y placer et t'escortera en formation."
-                    : "Emplacement libre : équipe une arme depuis la soute, ou achètes-en une au magasin.", MenuStyles.Text);
+                    ? "Emplacement libre : un drone gagné ou acheté viendra s'y placer et t'escortera en formation."
+                    : "Emplacement libre : équipe une arme depuis la soute, ou gagnes-en une après un combat.", MenuStyles.Text);
             }
             else
             {
                 DrawItemDetails(item);
+                DrawUpgrades(loadout, item.Id);
                 GUILayout.Space(8);
                 if ((_slotKind == SlotKind.Weapon || _slotKind == SlotKind.Drone) &&
                     ActionButton("Retirer vers la soute", canEdit, 220))
@@ -194,7 +196,7 @@ namespace Space.Presentation.UI
             var any = false;
             foreach (var id in loadout.Hold)
             {
-                var candidate = ItemCatalog.Get(id);
+                var candidate = loadout.Resolve(id);
                 if (candidate == null || ItemCategories.Slot(candidate.Category) != _slotKind)
                     continue;
                 if (!any)
@@ -203,7 +205,7 @@ namespace Space.Presentation.UI
                     any = true;
                 }
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(new GUIContent($" {candidate.Name} · {ItemText.Summary(candidate)}", ItemIcons.Get(candidate)), MenuStyles.Small, GUILayout.Height(40));
+                GUILayout.Label(new GUIContent($" {candidate.Name}{ItemText.UpgradeTag(loadout, id)} · {ItemText.Summary(candidate)}", ItemIcons.Get(candidate)), MenuStyles.Small, GUILayout.Height(40));
                 if (ActionButton("Équiper ici", canEdit, 110))
                 {
                     var index = _slotIndex;
@@ -216,6 +218,7 @@ namespace Space.Presentation.UI
         void DrawHoldDetails(ShipLoadout loadout, ItemDefinition item, bool canEdit)
         {
             DrawItemDetails(item, FittedCounterpart(item));
+            DrawUpgrades(loadout, item.Id);
             GUILayout.Space(8);
             GUILayout.BeginHorizontal();
             if (ActionButton("Équiper", canEdit, 120))
@@ -231,7 +234,7 @@ namespace Space.Presentation.UI
                     _slotIndex = slot < 0 ? FindSlot(loadout, kind, item.Id) : slot;
                 });
             }
-            if (ActionButton($"Vendre ({ItemText.Credits(ShopGenerator.SellPrice(item))})", canEdit, 170))
+            if (ActionButton($"Vendre ({ItemText.Credits(ShopGenerator.SellPrice(item))})", canEdit && Run.ShopOpen, 170))
             {
                 Defer(() =>
                 {
@@ -240,6 +243,19 @@ namespace Space.Presentation.UI
                 });
             }
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>The upgrades fitted onto an item (they are already counted in its numbers above).</summary>
+        static void DrawUpgrades(ShipLoadout loadout, string itemId)
+        {
+            var slots = loadout.UpgradesOf(itemId);
+            if (slots == null)
+                return;
+            GUILayout.Space(6);
+            GUILayout.Label($"Améliorations ({loadout.UpgradeCount(itemId)}/{ShipLoadout.UpgradeSlots})", MenuStyles.Heading);
+            foreach (var id in slots)
+                if (UpgradeCatalog.Get(id) is { } upgrade)
+                    GUILayout.Label($"• {upgrade.Name} : {upgrade.Description}", MenuStyles.Small);
         }
 
         static int FindSlot(ShipLoadout loadout, SlotKind kind, string id)

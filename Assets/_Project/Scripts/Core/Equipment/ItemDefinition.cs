@@ -93,5 +93,8 @@ namespace Space.Core.Equipment
         public string DroneShip = "Drone";
         public float DroneHull;
         public float DroneSpeed;
+
+        /// <summary>A copy to change (upgraded items); <see cref="Weapon"/> is a struct and is copied too.</summary>
+        public ItemDefinition Clone() => (ItemDefinition)MemberwiseClone();
     }
 }

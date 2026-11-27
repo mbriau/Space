@@ -8,8 +8,8 @@ using UnityEngine.InputSystem;
 namespace Space.Presentation.UI
 {
     /// <summary>
-    /// Equipment menus (provisional IMGUI): the player's ship and its equipment, the shop between
-    /// levels and the catalogue of every item by category. I: ship, M: shop, C: catalogue, Esc: close.
+    /// Equipment menus (provisional IMGUI): the player's ship and its equipment, the shop (only at a
+    /// shop beacon) and the catalogue of every item by category. I: ship, M: shop, C: catalogue, Esc: close.
     /// Opening a menu during a level pauses the simulation; equipment changes only between levels.
     /// </summary>
     public partial class EquipmentMenus : MonoBehaviour
@@ -47,7 +47,7 @@ namespace Space.Presentation.UI
 
         public void Open(Page page)
         {
-            if (page == Page.Shop && (Run == null || !Run.BetweenLevels))
+            if (page == Page.Shop && (Run == null || !Run.ShopOpen))
                 page = Page.Ship;
             if (_page == Page.None && page != Page.None && Runner != null && Runner.IsLevelRunning && !Runner.IsPaused)
             {
@@ -84,7 +84,7 @@ namespace Space.Presentation.UI
                 return;
             if (keyboard.iKey.wasPressedThisFrame) Toggle(Page.Ship);
             if (keyboard.cKey.wasPressedThisFrame) Toggle(Page.Catalog);
-            if (keyboard.mKey.wasPressedThisFrame && Run != null && Run.BetweenLevels) Toggle(Page.Shop);
+            if (keyboard.mKey.wasPressedThisFrame && Run != null && Run.ShopOpen) Toggle(Page.Shop);
             if (keyboard.escapeKey.wasPressedThisFrame && IsOpen) Close();
         }
 
@@ -124,7 +124,7 @@ namespace Space.Presentation.UI
         {
             GUILayout.BeginHorizontal();
             TabButton("Mon vaisseau (I)", Page.Ship, true);
-            TabButton("Magasin (M)", Page.Shop, Run.BetweenLevels);
+            TabButton("Magasin (M)", Page.Shop, Run.ShopOpen);
             TabButton("Catalogue (C)", Page.Catalog, true);
             GUILayout.FlexibleSpace();
             GUILayout.Label($"Crédits : {ItemText.Credits(Run.Credits)}", MenuStyles.Price, GUILayout.Height(32));
@@ -192,11 +192,11 @@ namespace Space.Presentation.UI
             var loadout = Run.Loadout;
             var kind = ItemCategories.Slot(item.Category);
             if (kind != SlotKind.Weapon && kind != SlotKind.Drone)
-                return ItemCatalog.Get(loadout.Get(kind));
+                return loadout.Resolve(loadout.Get(kind));
             // Weapons and drones: compare with a fitted item of the same category, if any.
             for (var i = 0; i < ShipLoadout.SlotCount(kind); i++)
             {
-                var fitted = ItemCatalog.Get(loadout.Get(kind, i));
+                var fitted = loadout.Resolve(loadout.Get(kind, i));
                 if (fitted != null && fitted.Category == item.Category)
                     return fitted;
             }
