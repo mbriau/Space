@@ -56,6 +56,9 @@ namespace Space.Presentation.UI
 
         void OnGUI()
         {
+            // A level intro plays: the scene and the comms frames only.
+            if (UiFocus.Cinematic)
+                return;
             _big ??= new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold };
             _panel ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, fontSize = 14, padding = new RectOffset(10, 10, 8, 8) };
 

@@ -41,12 +41,14 @@ namespace Space.Core.Combat
         {
             var time = SystemAPI.GetSingleton<SimulationTime>();
             var seed = SystemAPI.TryGetSingleton<LevelState>(out var level) ? level.RunSeed : 1u;
+            var ceaseFire = SystemAPI.TryGetSingleton<LevelHold>(out var hold) && hold.CeaseFire;
 
             var job = new FireJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
                 Tick = time.Tick,
                 Seed = seed,
+                CeaseFire = ceaseFire,
                 Entities = _targets.ToEntityArray(state.WorldUpdateAllocator),
                 Teams = _targets.ToComponentDataArray<Team>(state.WorldUpdateAllocator),
                 Positions = _targets.ToComponentDataArray<SimPosition>(state.WorldUpdateAllocator),
@@ -66,6 +68,9 @@ namespace Space.Core.Combat
             public float DeltaTime;
             public uint Tick;
             public uint Seed;
+
+            /// <summary>Scripted cease-fire (<see cref="LevelHold"/>): weapons charge but take no target.</summary>
+            public bool CeaseFire;
 
             [ReadOnly] public NativeArray<Entity> Entities;
             [ReadOnly] public NativeArray<Team> Teams;
@@ -92,7 +97,7 @@ namespace Space.Core.Combat
                     var charge = WeaponMath.ChargeRate(weapon.Powered);
                     weapon.CooldownLeft = math.max(0f, weapon.CooldownLeft - DeltaTime * charge);
 
-                    var target = WeaponMath.CanEngage(weapon.Control, weapon.Ammo, weapon.Powered)
+                    var target = !CeaseFire && WeaponMath.CanEngage(weapon.Control, weapon.Ammo, weapon.Powered)
                         ? ChooseTarget(position.Value, team.Value, attack.Value, weapon)
                         : -1;
                     weapon.CurrentTarget = target >= 0 ? Entities[target] : Entity.Null;
@@ -176,8 +181,8 @@ namespace Space.Core.Combat
                     // The miss passes beside the target.
                     var direction = distance > 1e-3f ? toTarget / distance : new float3(0f, 0f, 1f);
                     var side = math.normalizesafe(math.cross(direction, math.up()), new float3(1f, 0f, 0f));
-                    var lateral = (radius * 1.2f + random.NextFloat(0f, radius * 2f)) * (random.NextBool() ? 1f : -1f);
-                    impact += (double3)(side * lateral + direction * random.NextFloat(0f, radius * 3f));
+                    var miss = WeaponMath.MissOffset(radius, random.NextFloat(), random.NextFloat(), random.NextFloat());
+                    impact += (double3)(side * miss.x + direction * miss.y);
                 }
 
                 var damageFactor = WeaponMath.DamageFactor(weapon.Supercharged, weapon.SuperchargeDamageFactor);
@@ -189,6 +194,7 @@ namespace Space.Core.Combat
                     Type = weapon.Type,
                     Damage = weapon.Damage * damageFactor,
                     ShieldDamage = weapon.ShieldDamage * damageFactor,
+                    From = from,
                 });
                 Shots.Add(new ShotEvent
                 {

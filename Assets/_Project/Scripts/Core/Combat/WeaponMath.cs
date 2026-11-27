@@ -46,6 +46,14 @@ namespace Space.Core.Combat
 
         public static bool ShouldFire(FireMode mode, float hitProbability) => hitProbability >= FireThreshold(mode);
 
+        /// <summary>
+        /// Where a missed shot ends, relative to the target's centre, from three random numbers in
+        /// [0, 1): just beside the hull (1.05 to 1.5 radii to the side) and around it along the line of
+        /// fire (half a radius short to one radius long). A near miss, not a wild one.
+        /// </summary>
+        public static float2 MissOffset(float radius, float side, float spread, float depth) =>
+            new((side < 0.5f ? -1f : 1f) * radius * (1.05f + spread * 0.45f), radius * (depth * 1.5f - 0.5f));
+
         /// <summary>Charging speed of a weapon: full speed when powered, nothing otherwise (no fractions).</summary>
         public static float ChargeRate(bool powered) => powered ? 1f : 0f;
 

@@ -21,7 +21,7 @@ namespace Space.Presentation.Input
         protected override void OnUpdate()
         {
             var keyboard = Keyboard.current;
-            if (keyboard == null || UiFocus.MenuOpen)
+            if (keyboard == null || UiFocus.BlocksWorld)
                 return;
 
             var time = SystemAPI.GetSingletonRW<SimulationTime>();

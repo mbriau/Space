@@ -9,8 +9,9 @@ using UnityEngine;
 namespace Space.Presentation.Rendering
 {
     /// <summary>
-    /// Impacts: an expanding burst sized by the damage dealt (orange on the hull, blue on a shield),
-    /// and a camera shake when one of the player's ships takes hull damage. Each hit should be felt.
+    /// Impacts: on a shield, an electric splash on its surface where the shot struck; on the hull, an
+    /// expanding burst sized by the damage dealt; a camera shake when one of the player's ships takes
+    /// hull damage. Each hit should be felt.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class ImpactEffects : MonoBehaviour
@@ -85,12 +86,108 @@ namespace Space.Presentation.Rendering
                 var onHull = impact.HullDamage > impact.ShieldDamage * 0.5f || !impact.ShieldWasUp;
                 var damage = impact.HullDamage + impact.ShieldDamage;
                 var radius = impact.TargetRadius * 0.6f + damage * 0.25f;
-                Play(position, radius, onHull ? HullColor : ShieldColor);
+                if (impact.ShieldWasUp && impact.ShieldDamage > 0f)
+                    PlayShieldArc(impact, origin, damage);
+                else
+                    Play(position, radius, onHull ? HullColor : ShieldColor);
 
                 if (impact.TargetTeam == Team.Player && impact.HullDamage > 0f && _rig != null)
                     _rig.Shake(impact.HullDamage * ShakePerDamage);
             }
             impacts.Clear();
+        }
+
+        [Header("Impacts sur bouclier")]
+        [Tooltip("Lifetime of the electric splash where a shot strikes a shield, in seconds.")]
+        [Min(0.05f)] public float ArcDuration = 0.55f;
+
+        [Tooltip("Size of the splash as a share of the ship's radius (grows a little with the damage).")]
+        public float ArcSize = 0.9f;
+
+        struct Arc
+        {
+            public Transform Quad;
+            public Material Material;
+            public float Age;
+        }
+
+        readonly List<Arc> _arcs = new();
+        Mesh _arcQuad;
+        Shader _arcShader;
+        static readonly int FadeId = Shader.PropertyToID("_Fade");
+        static readonly int ReachId = Shader.PropertyToID("_Reach");
+
+        /// <summary>
+        /// A shot strikes a shield: an electric splash on the shield's surface, on the side the shot
+        /// came from, following the ship.
+        /// </summary>
+        void PlayShieldArc(in ImpactEvent impact, double3 origin, float damage)
+        {
+            var from = (Vector3)(float3)(impact.From - origin);
+            var presenter = TurretPresenter.Instance;
+            Vector3 point, normal;
+            float radius;
+            Transform anchor;
+            if (presenter == null || !presenter.TryGetShieldHit(impact.Target, from, out point, out normal, out radius, out anchor))
+            {
+                var center = (Vector3)(float3)(impact.Position - origin);
+                normal = (from - center).normalized;
+                radius = impact.TargetRadius;
+                point = center + normal * radius;
+                anchor = null;
+            }
+
+            _arcShader ??= Shader.Find("Space/ElectricArc");
+            if (_arcShader == null)
+                return;
+            _arcQuad ??= BuildQuad();
+
+            var go = new GameObject("ShieldArc", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetPositionAndRotation(point + normal * Mathf.Max(1f, radius * 0.06f),Quaternion.LookRotation(normal, Mathf.Abs(normal.y) > 0.9f ? Vector3.forward : Vector3.up));
+            go.transform.localScale = Vector3.one * radius * ArcSize * (1f + Mathf.Clamp01(damage / 120f) * 0.6f);
+            if (anchor != null)
+                go.transform.SetParent(anchor, true);
+            go.GetComponent<MeshFilter>().sharedMesh = _arcQuad;
+            var material = new Material(_arcShader) { name = "ShieldArc" };
+            material.SetColor("_Color", ShieldColor);
+            material.SetFloat("_Seed", UnityEngine.Random.Range(0f, 100f));
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            _arcs.Add(new Arc { Quad = go.transform, Material = material });
+        }
+
+        void AnimateArcs(float dt)
+        {
+            for (var i = _arcs.Count - 1; i >= 0; i--)
+            {
+                var arc = _arcs[i];
+                arc.Age += dt;
+                var t = arc.Age / ArcDuration;
+                if (t >= 1f || arc.Quad == null)
+                {
+                    if (arc.Quad != null)
+                        Destroy(arc.Quad.gameObject);
+                    Destroy(arc.Material);
+                    _arcs.RemoveAt(i);
+                    continue;
+                }
+                // The arcs shoot out at once, then crackle and fade.
+                arc.Material.SetFloat(ReachId, Mathf.Clamp01(t * 6f));
+                arc.Material.SetFloat(FadeId, 1f - t * t);
+                _arcs[i] = arc;
+            }
+        }
+
+        static Mesh BuildQuad()
+        {
+            var mesh = new Mesh { name = "ShieldArcQuad" };
+            mesh.vertices = new[] { new Vector3(-0.5f, -0.5f, 0f), new Vector3(0.5f, -0.5f, 0f), new Vector3(0.5f, 0.5f, 0f), new Vector3(-0.5f, 0.5f, 0f) };
+            mesh.uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         void Play(Vector3 position, float radius, Color color)
@@ -112,6 +209,7 @@ namespace Space.Presentation.Rendering
                 dt = time.Paused ? 0f : dt * Mathf.Min(time.TimeScale, 2f);
             }
 
+            AnimateArcs(dt);
             var cameraPosition = _camera.transform.position;
             for (var i = _bursts.Count - 1; i >= 0; i--)
             {

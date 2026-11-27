@@ -101,7 +101,7 @@ namespace Space.Presentation.Controls
             TrackMainShip(em);
 
             // A menu has the focus: no selection, orders or power changes behind it.
-            if (UiFocus.MenuOpen)
+            if (UiFocus.BlocksWorld)
                 return;
 
             var keyboard = Keyboard.current;

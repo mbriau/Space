@@ -181,6 +181,7 @@ GameObject:
   m_Component:
   - component: {fileID: 345359281}
   - component: {fileID: 345359280}
+  - component: {fileID: 345359282}
   m_Layer: 0
   m_Name: Level Runner
   m_TagString: Untagged
@@ -201,6 +202,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Game.LevelRunner
   FirstLevel: {fileID: 11400000, guid: 016c740706e5fd84982f72e42b2af97a, type: 2}
+  Intro: {fileID: 345359282}
   BaseSeed: 20261126
 --- !u!4 &345359281
 Transform:
@@ -217,6 +219,49 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &345359282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345359279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa61d55ae65945049a2f45071ced2e97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Space.Presentation::Space.Presentation.Game.LevelIntro
+  Level: {fileID: 11400000, guid: 016c740706e5fd84982f72e42b2af97a, type: 2}
+  LeftPortrait: {fileID: 5724447399334725934, guid: 930cc7946d9053c428e2df6188f77bc8, type: 3}
+  LeftName: "KA\xCFA MOREAU"
+  LeftRole: Remorqueur
+  LeftAccent: {r: 0.35, g: 0.85, b: 1, a: 1}
+  RightPortrait: {fileID: 5315947183024924173, guid: 853a0a1e60700884cb53df47fbf9b66a, type: 3}
+  RightName: SILAS BRACK
+  RightRole: "\xC9corcheurs"
+  RightAccent: {r: 1, g: 0.45, b: 0.25, a: 1}
+  Story:
+    Speaker: 0
+    Audio: {fileID: 8300000, guid: 0da552367109edf44b46f51a672c190b, type: 3}
+    LipSync: {fileID: 4900000, guid: 197fb72b37e7c6b418e5f07888e5d84f, type: 3}
+    Subtitle: "Tu sais ce que m'a racont\xE9 un vieux m\xE9cano, sur la station Kessler ? Si plus personne ne construit de grands vaisseaux de guerre, c'est \xE0 cause d'une vieille histoire. Il y a tr\xE8s, tr\xE8s longtemps, dans une autre galaxie, ils avaient construit des cuirass\xE9s gigantesques. Des monstres. Et puis un jour, quelqu'un a eu l'id\xE9e de prendre quelques vieilles carcasses... et de les lancer droit dessus en passant en hyperespace. Para\xEEt qu'on a retrouv\xE9 des morceaux dans huit autres syst\xE8mes solaires."
+  Detection:
+    Speaker: 0
+    Audio: {fileID: 8300000, guid: 84d3b4160e3af9347a8e5eb6623fc339, type: 3}
+    LipSync: {fileID: 4900000, guid: 67288ecd0673dcb4e90b2667e78b9687, type: 3}
+    Subtitle: "Attends... je d\xE9tecte un vaisseau en approche. Non... deux vaisseaux."
+  Dialogue:
+  - Speaker: 0
+    Audio: {fileID: 8300000, guid: 93a1486c58796cc41808e990f1f5cbff, type: 3}
+    LipSync: {fileID: 4900000, guid: 60089a006dda9034f97a8c643a3a04db, type: 3}
+    Subtitle: "Ici le Remorqueur. Je vous ai sur mes \xE9crans, \xE0 b\xE2bord. On ne cherche pas d'histoires... mais on sait en finir une."
+  - Speaker: 1
+    Audio: {fileID: 8300000, guid: e68d9ab32be76cf4184f0c56430f408c, type: 3}
+    LipSync: {fileID: 4900000, guid: 1a9ca6862c3751241a0965f7a0a821ca, type: 3}
+    Subtitle: "Ka\xEFa Moreau... ta r\xE9putation te pr\xE9c\xE8de. Coupe tes moteurs et livre ta cargaison, et ton Remorqueur rentrera peut-\xEAtre en un seul morceau."
+  FlyoverSeconds: 7
+  SilenceAfterStory: 3.5
+  AfterArrivals: 1.5
 --- !u!1 &1455411568
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,6 +281,7 @@ GameObject:
   - component: {fileID: 1455411577}
   - component: {fileID: 1455411578}
   - component: {fileID: 1455411579}
+  - component: {fileID: 1455411580}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -529,6 +575,14 @@ MonoBehaviour:
     Drift: {x: 0.009, y: 0.002}
     Additive: 1
   Depth: 0.8
+--- !u!81 &1455411580
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1455411568}
+  m_Enabled: 1
 --- !u!1 &1679563676
 GameObject:
   m_ObjectHideFlags: 0

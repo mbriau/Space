@@ -56,6 +56,10 @@ namespace Space.Presentation.Rendering
             /// hangar design; null for placeholder turrets (<see cref="Turrets"/>).
             /// </summary>
             public List<ShipTurret> ModelTurrets;
+
+            /// <summary>The finished art of the ship, if it has some (shield aura, hit points on it).</summary>
+            public ShipArtModel ArtModel;
+            public float Radius;
             public int Signature;
             public bool Seen;
         }
@@ -118,27 +122,35 @@ namespace Space.Presentation.Rendering
                 {
                     var weapons = em.HasBuffer<Weapon>(entity) ? em.GetBuffer<Weapon>(entity, true) : default;
                     var weaponCount = weapons.IsCreated ? weapons.Length : 0;
-                    var design = em.HasComponent<ShipVisual>(entity)
-                        ? ShipDesigns.Get(em.GetComponentData<ShipVisual>(entity).DesignId.ToString())
-                        : null;
-                    if (design == null && weaponCount == 0)
+                    var visualId = em.HasComponent<ShipVisual>(entity) ? em.GetComponentData<ShipVisual>(entity).DesignId.ToString() : null;
+                    var design = visualId != null ? ShipDesigns.Get(visualId) : null;
+                    var art = visualId != null ? ShipArtLibrary.For(visualId) : null;
+                    if (design == null && art == null && weaponCount == 0)
                         continue;
 
                     var ltw = em.GetComponentData<LocalToWorld>(entity);
                     var radius = em.GetComponentData<ShipRadius>(entity).Value;
                     var team = em.GetComponentData<Team>(entity).Value;
 
-                    var signature = Signature(weapons) * 31 + (design?.Id.GetHashCode() ?? 0);
+                    var signature = Signature(weapons) * 31 + (visualId?.GetHashCode() ?? 0);
                     if (!_ships.TryGetValue(entity, out var set) || set.Signature != signature || set.Root == null)
                     {
                         if (set?.Root != null)
                             Destroy(set.Root);
-                        set = design != null ? BuildModel(design.Value, weapons) : Build(weapons, radius, team);
+                        set = art != null && design == null ? BuildArt(art, visualId, weapons)
+                            : design != null ? BuildModel(design.Value, weapons)
+                            : Build(weapons, radius, team);
                         set.Signature = signature;
                         _ships[entity] = set;
                     }
                     set.Seen = true;
+                    set.Radius = radius;
                     set.Root.transform.SetPositionAndRotation(ltw.Position, ltw.Rotation);
+                    if (set.ArtModel != null)
+                    {
+                        var shield = em.HasComponent<Shield>(entity) ? em.GetComponentData<Shield>(entity) : default;
+                        set.ArtModel.SetShield(shield.Max > 0f ? shield.Current / shield.Max : 0f, shield.IsUp);
+                    }
 
                     if (set.ModelTurrets != null)
                     {
@@ -231,6 +243,33 @@ namespace Space.Presentation.Rendering
             }
         }
 
+        /// <summary>
+        /// Where a shot coming from <paramref name="from"/> strikes a ship's shield: on its aura when it
+        /// has one (which flashes), otherwise on a sphere a little larger than the ship. The point is
+        /// returned with the outward normal and the ship's root, so an effect can follow the ship.
+        /// </summary>
+        public bool TryGetShieldHit(Entity ship, Vector3 from, out Vector3 point, out Vector3 normal, out float radius, out Transform anchor)
+        {
+            point = default;
+            normal = Vector3.up;
+            radius = 10f;
+            anchor = null;
+            if (!_ships.TryGetValue(ship, out var set) || set.Root == null)
+                return false;
+            anchor = set.Root.transform;
+            radius = set.Radius;
+            if (set.ArtModel != null && set.ArtModel.TryShieldHit(from, out point, out normal))
+            {
+                set.ArtModel.FlashShield();
+                return true;
+            }
+            var center = anchor.position;
+            var direction = (from - center).sqrMagnitude > 1e-4f ? (from - center).normalized : Vector3.up;
+            normal = direction;
+            point = center + direction * radius * 1.1f;
+            return true;
+        }
+
         /// <summary>World position of a weapon's muzzle, for projectiles to start from.</summary>
         public bool TryGetMuzzle(Entity ship, int weaponIndex, out Vector3 position)
         {
@@ -253,6 +292,26 @@ namespace Space.Presentation.Rendering
         // ------------------------------------------------------------------ construction
 
         /// <summary>
+        /// Finished art: a textured hull with turret heads on its slots, or a ready-made model whose
+        /// weapons are part of it (then the shots leave from the ship's centre).
+        /// </summary>
+        static ShipTurrets BuildArt(ShipArt art, string name, DynamicBuffer<Weapon> weapons)
+        {
+            var set = new ShipTurrets { Root = new GameObject($"Ship {name}") };
+            set.Root.hideFlags = HideFlags.DontSave;
+            var artModel = ShipArtModel.Create(art, set.Root.transform);
+            var count = weapons.IsCreated ? weapons.Length : 0;
+            for (var i = 0; i < count && i < artModel.Turrets.Count; i++)
+            {
+                var w = weapons[i];
+                artModel.SetTurret(i, TurretVisuals.KindFor(w.Type, w.ProjectileSpeed, w.Damage, w.Cooldown));
+            }
+            set.ModelTurrets = artModel.Turrets;
+            set.ArtModel = artModel;
+            return set;
+        }
+
+        /// <summary>
         /// The hangar design of the ship, with a turret per weapon on the hardpoints in slot order
         /// (a ship with more weapons than hardpoints leaves the extra ones without a turret).
         /// </summary>
@@ -266,14 +325,8 @@ namespace Space.Presentation.Rendering
             var art = ShipArtLibrary.For(design.Id);
             if (art != null)
             {
-                var artModel = ShipArtModel.Create(art, set.Root.transform);
-                for (var i = 0; i < count && i < artModel.Turrets.Count; i++)
-                {
-                    var w = weapons[i];
-                    artModel.SetTurret(i, TurretVisuals.KindFor(w.Type, w.ProjectileSpeed, w.Damage, w.Cooldown));
-                }
-                set.ModelTurrets = artModel.Turrets;
-                return set;
+                Destroy(set.Root);
+                return BuildArt(art, design.DisplayName, weapons);
             }
 
             var model = ShipModel.Create(design, set.Root.transform, fitDefaultWeapons: false);

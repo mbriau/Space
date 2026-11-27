@@ -108,13 +108,18 @@ namespace Space.Core.Combat
             {
                 var targetShieldUp = Shields.HasComponent(target) && Shields[target].IsUp;
                 var physicalAmmo = false;
+                var energyWeapons = false;
                 foreach (var weapon in weapons)
+                {
                     physicalAmmo |= !weapon.IsEnergy && weapon.Ammo != 0;
+                    energyWeapons |= weapon.IsEnergy;
+                }
 
                 // Shield first, then the chosen weapons, then whatever is left to the engines.
                 var all = weapons.AsNativeArray();
                 WeaponPower.PowerDownAll(ref power, all);
-                var physicalPhase = !targetShieldUp && physicalAmmo;
+                // A ship with only guns uses them whatever the target's shield.
+                var physicalPhase = physicalAmmo && (!targetShieldUp || !energyWeapons);
                 if (physicalPhase)
                     PowerMath.Allocate(ref power, shield: power.ShieldCapacity, engines: 0);
                 else

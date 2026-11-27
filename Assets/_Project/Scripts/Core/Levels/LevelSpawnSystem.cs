@@ -55,7 +55,9 @@ namespace Space.Core.Levels
                 {
                     var spawn = spawns[i];
                     var isFlagship = spawn.Role == SpawnRole.Flagship;
-                    if (spawn.Done || (pass == 0) != isFlagship || tick < level.StartTick + spawn.DelayTicks)
+                    // Our ships are there from the start; enemies follow the level clock (which an intro may hold).
+                    var due = spawn.Role != SpawnRole.Enemy || tick >= level.StartTick + spawn.DelayTicks;
+                    if (spawn.Done || (pass == 0) != isFlagship || !due)
                         continue;
 
                     var prefab = Find(library, spawn.Ship);
@@ -144,7 +146,7 @@ namespace Space.Core.Levels
                         foreach (var weapon in em.GetBuffer<Weapon>(entity))
                             longestRange = math.max(longestRange, weapon.Range);
                     var distance = Engagement.StationDistance(spawn.Distance, longestRange);
-                    var station = Engagement.EnemyStation(enemyIndex, distance, spawn.AngleDegrees);
+                    var station = Engagement.EnemyStation(enemyIndex, distance, spawn.AngleDegrees, spawn.Along);
                     var leader = Flagship();
                     if (leader != Entity.Null)
                     {

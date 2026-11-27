@@ -89,10 +89,31 @@ namespace Space.Presentation.Controls
             _targetDistance = Distance;
         }
 
+        /// <summary>Another script (a level intro) moves the camera; the rig leaves it alone.</summary>
+        public bool Scripted { get; private set; }
+
+        /// <summary>Hands the camera to a script until <see cref="ReleaseScripted"/>.</summary>
+        public void TakeScripted() => Scripted = true;
+
+        /// <summary>
+        /// Takes the camera back in tactical mode, starting from where the script left it, so the
+        /// framing glides to its usual place instead of jumping.
+        /// </summary>
+        public void ReleaseScripted()
+        {
+            Scripted = false;
+            CameraMode = Mode.Tactical;
+            _tacticalPosition = transform.position;
+            _tacticalRotation = transform.rotation;
+            _tacticalPlaced = true;
+        }
+
         void LateUpdate()
         {
+            if (Scripted)
+                return;
             var keyboard = Keyboard.current;
-            if (keyboard != null && !UiFocus.MenuOpen && keyboard.vKey.wasPressedThisFrame)
+            if (keyboard != null && !UiFocus.BlocksWorld && keyboard.vKey.wasPressedThisFrame)
             {
                 CameraMode = CameraMode == Mode.Tactical ? Mode.Orbit : Mode.Tactical;
                 _tacticalPlaced = false;
@@ -129,7 +150,7 @@ namespace Space.Presentation.Controls
         /// </summary>
         void UpdateTactical(Vector3 ship, Quaternion shipRotation, float radius)
         {
-            if (!UiFocus.MenuOpen)
+            if (!UiFocus.BlocksWorld)
             {
                 var scroll = Mouse.current != null ? Mouse.current.scroll.ReadValue().y : 0f;
                 if (scroll > 0f) _tacticalZoom /= ZoomStep;
@@ -215,7 +236,7 @@ namespace Space.Presentation.Controls
 
         void ReadInput()
         {
-            if (UiFocus.MenuOpen)
+            if (UiFocus.BlocksWorld)
                 return;
 
             var mouse = Mouse.current;

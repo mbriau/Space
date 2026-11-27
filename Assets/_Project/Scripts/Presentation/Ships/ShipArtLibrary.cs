@@ -37,7 +37,7 @@ namespace Space.Presentation.Ships
         public ShipArt Find(string designId)
         {
             foreach (var ship in Ships)
-                if (ship != null && ship.DesignId == designId && ship.Hull != null)
+                if (ship != null && ship.DesignId == designId && (ship.Hull != null || ship.Model != null))
                     return ship;
             return null;
         }
@@ -53,6 +53,22 @@ namespace Space.Presentation.Ships
         public string DesignId;
         public Mesh Hull;
         public Material Material;
+
+        /// <summary>
+        /// A ready-made model (an asset pack's prefab) drawn instead of <see cref="Hull"/>, scaled by
+        /// <see cref="ModelScale"/>, nose along +Z. Its weapons are part of the model: no turret heads.
+        /// </summary>
+        public GameObject Model;
+        public float ModelScale = 1f;
+
+        /// <summary>Size in metres of the generated turrets put on a model's slots (it has no turret heads of its own).</summary>
+        public float TurretSize = 2f;
+
+        /// <summary>
+        /// Shield aura of a model, in ship space: ellipsoids taken from the prefab's colliders, a little
+        /// larger than them. Empty = no aura.
+        /// </summary>
+        public List<AuraShape> Aura = new();
 
         /// <summary>Turret pivots on the deck, one per weapon slot, front to back.</summary>
         public List<Vector3> Slots = new();
@@ -90,6 +106,15 @@ namespace Space.Presentation.Ships
             TurretKind.Missile => 2,
             _ => 1,
         };
+    }
+
+    /// <summary>One piece of a shield aura: an ellipsoid (centre, size), turned to follow the collider it comes from.</summary>
+    [Serializable]
+    public struct AuraShape
+    {
+        public Vector3 Center;
+        public Vector3 Size;
+        public Vector3 Euler;
     }
 
     /// <summary>A turret head: the mesh turns around its pivot (origin, +Y), barrels along +Z.</summary>

@@ -63,6 +63,15 @@ namespace Space.Core.Ships
         /// frame (X right, Z forward): abeam at <paramref name="distance"/>, on the right unless the
         /// authored angle is negative. Enemies spread along the course in threes, then in further ranks.
         /// </summary>
+        public static float3 EnemyStation(int index, float distance, float angleDegrees, float along)
+        {
+            // A position authored along the course (+ ahead, - astern) replaces the automatic spread.
+            var station = EnemyStation(index, distance, angleDegrees);
+            if (along != 0f)
+                station.z = along;
+            return station;
+        }
+
         public static float3 EnemyStation(int index, float distance, float angleDegrees)
         {
             var side = angleDegrees < 0f ? -1f : 1f;

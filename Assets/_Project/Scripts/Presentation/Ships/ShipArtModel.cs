@@ -4,15 +4,29 @@ using UnityEngine;
 namespace Space.Presentation.Ships
 {
     /// <summary>
-    /// A ship drawn with its finished art (<see cref="ShipArt"/>): the textured hull and a turret head
-    /// per fitted weapon on the slot pivots. Same turret API as <see cref="ShipModel"/>.
+    /// A ship drawn with its finished art (<see cref="ShipArt"/>): the textured hull with a turret head
+    /// per fitted weapon on the slot pivots, or a ready-made model with generated turrets on its slots
+    /// and a faint shield aura shaped on its colliders. Same turret API as <see cref="ShipModel"/>.
     /// </summary>
     public class ShipArtModel : MonoBehaviour
     {
+        [Tooltip("Aura brightness with a full shield (it fades with the charge).")]
+        public float AuraIntensity = 0.35f;
+
+        [Tooltip("Extra brightness of the whole aura right after a hit.")]
+        public float HitFlash = 1.2f;
+
         public ShipArt Art { get; private set; }
 
         /// <summary>One entry per slot; null where no weapon is fitted.</summary>
         public readonly List<ShipTurret> Turrets = new();
+
+        readonly List<Mesh> _meshes = new();
+        readonly List<MeshRenderer> _aura = new();
+        Material _auraMaterial;
+        float _flash;
+        static Mesh _sphere;
+        static readonly int IntensityId = Shader.PropertyToID("_Intensity");
 
         public static ShipArtModel Create(ShipArt art, Transform parent)
         {
@@ -26,15 +40,108 @@ namespace Space.Presentation.Ships
         void Build(ShipArt art)
         {
             Art = art;
-            var hull = new GameObject("Hull");
-            hull.transform.SetParent(transform, false);
-            hull.AddComponent<MeshFilter>().sharedMesh = art.Hull;
-            hull.AddComponent<MeshRenderer>().sharedMaterial = art.Material;
+            if (art.Model != null)
+            {
+                // A ready-made model: only its looks (its colliders would mean nothing to the simulation).
+                var model = Instantiate(art.Model, transform);
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                model.transform.localScale = Vector3.one * art.ModelScale;
+                foreach (var collider in model.GetComponentsInChildren<Collider>(true))
+                    Destroy(collider);
+                BuildAura(art);
+            }
+            else
+            {
+                var hull = new GameObject("Hull");
+                hull.transform.SetParent(transform, false);
+                hull.AddComponent<MeshFilter>().sharedMesh = art.Hull;
+                hull.AddComponent<MeshRenderer>().sharedMaterial = art.Material;
+            }
             for (var i = 0; i < art.Slots.Count; i++)
                 Turrets.Add(null);
         }
 
-        /// <summary>Puts the head matching <paramref name="kind"/> on a slot, or empties it with null.</summary>
+        void BuildAura(ShipArt art)
+        {
+            if (art.Aura == null || art.Aura.Count == 0)
+                return;
+            var shader = Shader.Find("Space/ShieldAura");
+            if (shader == null)
+                return;
+            _auraMaterial = new Material(shader) { name = "ShieldAura" };
+            foreach (var shape in art.Aura)
+            {
+                var go = new GameObject("Aura", typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(transform, false);
+                go.transform.localPosition = shape.Center;
+                go.transform.localRotation = Quaternion.Euler(shape.Euler);
+                go.transform.localScale = shape.Size;
+                go.GetComponent<MeshFilter>().sharedMesh = Sphere;
+                var renderer = go.GetComponent<MeshRenderer>();
+                renderer.sharedMaterial = _auraMaterial;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                _aura.Add(renderer);
+            }
+        }
+
+        /// <summary>The aura follows the shield: brighter with the charge, gone when it is down.</summary>
+        public void SetShield(float charge, bool up)
+        {
+            if (_auraMaterial == null)
+                return;
+            _flash = Mathf.MoveTowards(_flash, 0f, Time.deltaTime * 3f);
+            var intensity = up ? AuraIntensity * (0.35f + 0.65f * Mathf.Clamp01(charge)) + _flash * HitFlash : 0f;
+            _auraMaterial.SetFloat(IntensityId, intensity);
+            foreach (var renderer in _aura)
+                renderer.enabled = intensity > 0.001f;
+        }
+
+        /// <summary>A shot struck the shield: the whole aura lights up for an instant.</summary>
+        public void FlashShield() => _flash = 1f;
+
+        /// <summary>
+        /// Where a shot coming from <paramref name="from"/> (world) meets the aura, and the surface's
+        /// outward normal. False when the model has no aura.
+        /// </summary>
+        public bool TryShieldHit(Vector3 from, out Vector3 point, out Vector3 normal)
+        {
+            point = transform.position;
+            normal = Vector3.up;
+            if (Art == null || Art.Aura == null || Art.Aura.Count == 0)
+                return false;
+
+            var best = float.PositiveInfinity;
+            foreach (var shape in Art.Aura)
+            {
+                // Into the ellipsoid's own space, where it is a unit sphere.
+                var toLocal = Matrix4x4.TRS(transform.TransformPoint(shape.Center), transform.rotation * Quaternion.Euler(shape.Euler), Vector3.Scale(transform.lossyScale, shape.Size * 0.5f)).inverse;
+                var origin = toLocal.MultiplyPoint3x4(from);
+                var direction = toLocal.MultiplyVector(transform.TransformPoint(shape.Center) - from).normalized;
+                var b = Vector3.Dot(origin, direction);
+                var c = origin.sqrMagnitude - 1f;
+                var discriminant = b * b - c;
+                if (discriminant < 0f)
+                    continue;
+                var t = -b - Mathf.Sqrt(discriminant);
+                if (t < 0f)
+                    continue;
+                var local = origin + direction * t;
+                var world = toLocal.inverse.MultiplyPoint3x4(local);
+                var distance = (world - from).sqrMagnitude;
+                if (distance < best)
+                {
+                    best = distance;
+                    point = world;
+                    // The normal of a scaled sphere: the inverse transpose of the ellipsoid's matrix.
+                    normal = toLocal.transpose.MultiplyVector(local).normalized;
+                }
+            }
+            return best < float.PositiveInfinity;
+        }
+
+        /// <summary>Puts the turret matching <paramref name="kind"/> on a slot, or empties it with null.</summary>
         public ShipTurret SetTurret(int slot, TurretKind? kind)
         {
             if (slot < 0 || slot >= Turrets.Count)
@@ -44,26 +151,71 @@ namespace Space.Presentation.Ships
                 Destroy(Turrets[slot].gameObject);
                 Turrets[slot] = null;
             }
-            var head = kind == null ? null : Art.BestTurret(kind.Value);
-            if (head == null)
+            if (kind == null)
+                return null;
+
+            // Cut-out heads of a textured hull, or a generated turret on a ready-made model.
+            var head = Art.BestTurret(kind.Value);
+            if (head == null && Art.Model == null)
                 return null;
 
             var root = new GameObject($"Turret {slot + 1}");
             root.transform.SetParent(transform, false);
             root.transform.localPosition = Art.Slots[slot];
+            var turret = root.AddComponent<ShipTurret>();
+            turret.Kind = kind.Value;
 
             var headObject = new GameObject("Head");
             headObject.transform.SetParent(root.transform, false);
-            headObject.AddComponent<MeshFilter>().sharedMesh = head.Head;
-            headObject.AddComponent<MeshRenderer>().sharedMaterial = Art.Material;
-
-            var turret = root.AddComponent<ShipTurret>();
+            if (head != null)
+            {
+                headObject.AddComponent<MeshFilter>().sharedMesh = head.Head;
+                headObject.AddComponent<MeshRenderer>().sharedMaterial = Art.Material;
+                turret.Size = head.Size;
+                turret.Muzzles.AddRange(head.Muzzles);
+            }
+            else
+            {
+                var meshes = TurretGenerator.Build(kind.Value, Art.TurretSize, ShipDesigns.PirateIron);
+                AddRenderer(root, meshes.Base, $"{Art.DesignId}_Turret{slot}_Base");
+                headObject.transform.localPosition = new Vector3(0f, meshes.PivotHeight, 0f);
+                AddRenderer(headObject, meshes.Head, $"{Art.DesignId}_Turret{slot}_Head");
+                turret.Size = Art.TurretSize;
+                turret.Muzzles.AddRange(meshes.Muzzles);
+            }
             turret.Head = headObject.transform;
-            turret.Kind = kind.Value;
-            turret.Size = head.Size;
-            turret.Muzzles.AddRange(head.Muzzles);
             Turrets[slot] = turret;
             return turret;
+        }
+
+        void AddRenderer(GameObject go, ShipMeshData data, string meshName)
+        {
+            var mesh = ShipMeshes.ToMesh(data, meshName);
+            _meshes.Add(mesh);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = ShipMeshes.Toon;
+        }
+
+        static Mesh Sphere
+        {
+            get
+            {
+                if (_sphere != null)
+                    return _sphere;
+                var primitive = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                _sphere = primitive.GetComponent<MeshFilter>().sharedMesh;
+                Destroy(primitive);
+                return _sphere;
+            }
+        }
+
+        void OnDestroy()
+        {
+            foreach (var mesh in _meshes)
+                if (mesh != null)
+                    Destroy(mesh);
+            if (_auraMaterial != null)
+                Destroy(_auraMaterial);
         }
     }
 }

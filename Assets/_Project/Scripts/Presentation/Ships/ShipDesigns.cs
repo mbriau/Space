@@ -22,6 +22,9 @@ namespace Space.Presentation.Ships
         public static readonly ShipPalette Bumble = new("Bourdon", Hex(0xFFCF2E), Hex(0x2B2D3A), Hex(0xFF5A36), Hex(0x3A3D4A), Hex(0xF4F1E8), Hex(0x9BE7FF), Hex(0x4FD8FF));
         public static readonly ShipPalette Coral = new("Corail", Hex(0xFF6B6B), Hex(0x2D3A5C), Hex(0xFFD93D), Hex(0x333849), Hex(0xF7F1E3), Hex(0x9EF0FF), Hex(0x4CE0FF));
 
+        /// <summary>Dark iron and dried blood, for the turrets fitted on the pirates' ready-made models.</summary>
+        public static readonly ShipPalette PirateIron = new("Fer pirate", Hex(0x34363D), Hex(0x9E2A2B), Hex(0xC9963E), Hex(0x1E1F24), Hex(0x5A5E66), Hex(0xFF6B4A), Hex(0xFF7A3D));
+
         const string Laser = ItemCatalog.StarterLaser;
         const string MassDriver = ItemCatalog.StarterCannon;
 

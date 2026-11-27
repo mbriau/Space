@@ -58,6 +58,9 @@ namespace Space.Core.Levels
 
             [Tooltip("Side it comes from: positive = starboard (right), negative = port (left).")]
             public float AngleDegrees;
+
+            [Tooltip("Station along the course, in metres: + ahead of the flagship, - astern (0 = automatic spread).")]
+            public float Along;
         }
     }
 }
